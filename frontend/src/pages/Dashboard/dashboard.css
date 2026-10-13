@@ -1,0 +1,55 @@
+/* Đặt vào: D:\spreeexpress\frontend\src\pages\Dashboard\ */
+.chart-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.select-btn { font-weight: 500; padding: 10px 16px; }
+
+/* Biểu đồ cột */
+.bars { display: flex; gap: 12px; margin-top: 28px; }
+.bars-y { display: flex; flex-direction: column; justify-content: space-between; height: 220px; font-size: 12px; color: var(--muted); text-align: right; width: 28px; }
+.bars-plot { position: relative; flex: 1; height: 244px; }
+.bars-grid { position: absolute; inset: 0 0 24px 0; display: flex; flex-direction: column; justify-content: space-between; }
+.bars-grid i { display: block; border-top: 1px solid #f1f5f9; }
+.bars-cols { position: absolute; inset: 0; display: flex; justify-content: space-around; }
+.bars-col { display: flex; flex-direction: column; align-items: center; height: 100%; }
+.bars-col > span { height: 24px; line-height: 24px; font-size: 12px; color: var(--muted); font-weight: 600; }
+.bars-pair { display: flex; align-items: flex-end; gap: 6px; height: 220px; }
+.bars-pair i { display: block; width: 14px; border-radius: 8px 8px 0 0; }
+.b-done { background: #2f7bff; }
+.b-pending { background: #dbe7fb; }
+.legend { display: flex; justify-content: center; gap: 24px; margin-top: 14px; font-size: 13px; font-weight: 600; }
+.legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+
+/* Donut */
+.donut-wrap { display: flex; align-items: center; gap: 24px; margin-top: 28px; flex-wrap: wrap; }
+.donut-box { position: relative; width: 180px; height: 180px; flex-shrink: 0; }
+.donut { width: 100%; height: 100%; }
+.donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.donut-center strong { font-size: 28px; font-weight: 800; }
+.donut-center span { font-size: 12px; color: var(--muted); }
+.donut-legend { list-style: none; flex: 1; min-width: 150px; display: flex; flex-direction: column; gap: 14px; }
+.donut-legend li { display: flex; align-items: center; gap: 10px; font-size: 14px; color: #475569; }
+.donut-legend li i { width: 8px; height: 8px; border-radius: 50%; }
+.donut-legend li b { margin-left: auto; color: var(--text); }
+.notice { margin-top: 26px; background: #ecfdf5; color: #047857; border-radius: 12px; padding: 16px 18px; font-size: 14px; }
+
+/* Bảng */
+.count-pill { margin-left: 8px; background: #dbeafe; color: var(--primary); font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 99px; vertical-align: middle; }
+.table-tools { display: flex; gap: 12px; flex-wrap: wrap; }
+.mini-search { display: flex; align-items: center; gap: 8px; border: 1px solid var(--border); border-radius: 12px; padding: 0 14px; height: 46px; color: var(--muted); }
+.mini-search input { border: none; outline: none; width: 190px; }
+.mini-select { border: 1px solid var(--border); border-radius: 12px; padding: 0 14px; height: 46px; background: #fff; }
+.table-scroll { overflow-x: auto; margin: 20px -24px 0; }
+.table { width: 100%; border-collapse: collapse; min-width: 900px; }
+.table th { text-align: left; font-size: 12px; letter-spacing: 1px; color: var(--muted); font-weight: 700; padding: 14px 24px; background: #f8fafc; }
+.table td { padding: 16px 24px; border-top: 1px solid var(--border); font-size: 14px; }
+.table td small { display: block; color: var(--muted); margin-top: 3px; }
+.table .code { color: var(--primary); font-weight: 700; }
+.badge-warn { background: #fef3c7; color: #b45309; font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 99px; white-space: nowrap; }
+.table-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; font-size: 14px; color: var(--muted); }
+.pager { display: flex; gap: 8px; }
+.pager button { width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--border); background: #fff; font-weight: 600; }
+.pager button.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+/* Trạng thái "chưa có dữ liệu" (khung trống) */
+.chart-empty-note { position: absolute; inset: 0 0 24px 0; display: grid; place-items: center; color: var(--muted); font-size: 14px; pointer-events: none; }
+.notice-empty { background: #f8fafc; color: var(--muted); }
+.table-empty { text-align: center; color: var(--muted); padding: 48px 24px !important; }

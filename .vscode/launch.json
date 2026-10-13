@@ -1,0 +1,19 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Chạy toàn bộ (F5)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "start-all",
+      "program": "${workspaceFolder}/backend/SpreeExpress.Api/bin/Debug/net10.0/SpreeExpress.Api.dll",
+      "cwd": "${workspaceFolder}/backend/SpreeExpress.Api",
+      "stopAtEntry": false,
+      "console": "internalConsole",
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_URLS": "http://localhost:5000"
+      }
+    }
+  ]
+}

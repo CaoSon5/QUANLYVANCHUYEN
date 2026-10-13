@@ -1,0 +1,20 @@
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --primary: #2f7bff;
+  --primary-dark: #1d63e8;
+  --primary-soft: #eaf2ff;
+  --bg: #f5f7fb;
+  --surface: #ffffff;
+  --border: #e8ecf3;
+  --text: #0f172a;
+  --muted: #64748b;
+  --dark: #0f172a;
+  --success: #16a34a;
+  --warning: #d97706;
+  --danger: #ef4444;
+  --radius: 16px;
+  --shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 4px 14px rgba(15, 23, 42, 0.04);
+  --sidebar-w: 280px;
+  --header-h: 84px;
+}
