@@ -49,6 +49,9 @@ namespace SpreeExpress.Api.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("CurrentWarehouseId")
+                        .HasColumnType("uuid");
+
                     b.Property<decimal>("DeclaredValue")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
@@ -79,6 +82,12 @@ namespace SpreeExpress.Api.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<int>("Quantity")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ReceivedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("ReceivedQuantity")
                         .HasColumnType("integer");
 
                     b.Property<string>("ReceiverAddress")
@@ -149,6 +158,8 @@ namespace SpreeExpress.Api.Migrations
                     b.HasIndex("PickupShipperId");
 
                     b.HasIndex("SellerId");
+
+                    b.HasIndex("CurrentWarehouseId", "Status");
 
                     b.HasIndex("PickupWarehouseId", "Status");
 
@@ -291,6 +302,11 @@ namespace SpreeExpress.Api.Migrations
 
             modelBuilder.Entity("SpreeExpress.Api.Entities.Order", b =>
                 {
+                    b.HasOne("SpreeExpress.Api.Entities.Warehouse", "CurrentWarehouse")
+                        .WithMany()
+                        .HasForeignKey("CurrentWarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("SpreeExpress.Api.Entities.User", "PickupShipper")
                         .WithMany()
                         .HasForeignKey("PickupShipperId")
@@ -307,6 +323,8 @@ namespace SpreeExpress.Api.Migrations
                         .HasForeignKey("SellerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("CurrentWarehouse");
 
                     b.Navigation("PickupShipper");
 
