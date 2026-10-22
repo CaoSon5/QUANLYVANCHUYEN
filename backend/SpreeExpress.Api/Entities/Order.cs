@@ -1,3 +1,4 @@
+// Đặt vào: D:\spreeexpress_supabase\spreeexpress\backend\SpreeExpress.Api\Entities\
 namespace SpreeExpress.Api.Entities;
 
 public class Order
@@ -43,6 +44,12 @@ public class Order
     public string? PickupNote { get; set; }
 
     public string? CancelReason { get; set; }
+
+    // Nhập kho: kho đang giữ hàng, thời điểm nhập và số kiện thực nhận
+    public Guid? CurrentWarehouseId { get; set; }
+    public Warehouse? CurrentWarehouse { get; set; }
+    public DateTime? ReceivedAt { get; set; }
+    public int? ReceivedQuantity { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

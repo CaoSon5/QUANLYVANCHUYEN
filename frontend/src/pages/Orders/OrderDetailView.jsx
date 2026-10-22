@@ -1,3 +1,4 @@
+// Đặt vào: D:\spreeexpress_supabase\spreeexpress\frontend\src\pages\Orders\
 import { formatDateTime, formatVnd } from '../../utils/format';
 import OrderStatusPill from './OrderStatusPill';
 import './orders.css';
@@ -64,6 +65,9 @@ export default function OrderDetailView({ order: o }) {
             <Info label="Thời gian nhận đơn">{formatDateTime(o.acceptedAt)}</Info>
             <Info label="Số kiện thực lấy">{o.pickedQuantity != null ? `${o.pickedQuantity}/${o.quantity} kiện` : null}</Info>
             <Info label="Thời gian lấy hàng">{formatDateTime(o.pickedUpAt)}</Info>
+            <Info label="Đang ở kho">{o.currentWarehouseCode ? `${o.currentWarehouseCode} - ${o.currentWarehouseName}` : null}</Info>
+            <Info label="Nhập kho lúc">{o.receivedAt ? formatDateTime(o.receivedAt) : null}</Info>
+            <Info label="Số kiện nhận tại kho">{o.receivedQuantity != null ? `${o.receivedQuantity}/${o.pickedQuantity ?? o.quantity} kiện` : null}</Info>
             {o.pickupNote && <Info label="Ghi chú của shipper" full>{o.pickupNote}</Info>}
             {o.cancelReason && <Info label="Lý do hủy" full>{o.cancelReason}</Info>}
           </div>

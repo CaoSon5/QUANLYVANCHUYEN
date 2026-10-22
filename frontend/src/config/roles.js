@@ -1,4 +1,4 @@
-// Đặt vào: D:\spreeexpress\frontend\src\config\
+// Đặt vào: D:\spreeexpress_supabase\spreeexpress\frontend\src\config\
 import {
   LayoutGrid, Package, Truck, MapPin, Archive, Wallet, Settings, Clock,
   Download, Upload, TrendingUp, Plus, Calendar, Boxes, Store, BookOpen,
@@ -85,7 +85,7 @@ export const ROLES = {
       stats: [
         { label: 'Đã nhập hôm nay', value: '—' },
         { label: 'Đã xuất hôm nay', value: '—' },
-        { label: 'Kiện đang lưu', value: '—' },
+        { label: 'Đơn đang lưu', value: '—' },
         { label: 'Tồn quá 48 giờ', value: '—' },
       ],
     },

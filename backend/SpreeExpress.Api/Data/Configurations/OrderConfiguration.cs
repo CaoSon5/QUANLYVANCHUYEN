@@ -1,3 +1,4 @@
+// Đặt vào: D:\spreeexpress_supabase\spreeexpress\backend\SpreeExpress.Api\Data\Configurations\
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using SpreeExpress.Api.Entities;
@@ -39,10 +40,12 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
         b.HasIndex(x => x.SellerId);
         b.HasIndex(x => new { x.PickupWarehouseId, x.Status });
         b.HasIndex(x => x.PickupShipperId);
+        b.HasIndex(x => new { x.CurrentWarehouseId, x.Status });
 
         b.HasOne(x => x.Seller).WithMany().HasForeignKey(x => x.SellerId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne(x => x.PickupWarehouse).WithMany().HasForeignKey(x => x.PickupWarehouseId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne(x => x.PickupShipper).WithMany().HasForeignKey(x => x.PickupShipperId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne(x => x.CurrentWarehouse).WithMany().HasForeignKey(x => x.CurrentWarehouseId).OnDelete(DeleteBehavior.Restrict);
     }
 }
 

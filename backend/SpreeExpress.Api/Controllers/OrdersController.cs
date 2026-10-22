@@ -1,3 +1,4 @@
+// Đặt vào: D:\spreeexpress_supabase\spreeexpress\backend\SpreeExpress.Api\Controllers\
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -58,9 +59,20 @@ public class OrdersController : ControllerBase
     public async Task<ActionResult<OrderDto>> Cancel(Guid id, CancelOrderRequest request) =>
         Ok(await _orders.CancelAsync(UserId, id, request.Reason));
 
+    // ----- Admin, Điều phối viên: xem mọi đơn -----
+
+    [Authorize(Roles = "Admin,Dispatcher")]
+    [HttpGet]
+    public async Task<ActionResult<PagedResult<OrderDto>>> All(
+        [FromQuery] string? search,
+        [FromQuery] string? status,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10) =>
+        Ok(await _orders.ListAllAsync(search, status, page, pageSize));
+
     // ----- Dùng chung -----
 
-    [Authorize(Roles = "Seller,Shipper")]
+    [Authorize(Roles = "Seller,Shipper,Warehouse,Admin,Dispatcher")]
     [HttpGet("summary")]
     public async Task<ActionResult<OrderSummaryDto>> Summary() =>
         Ok(await _orders.GetSummaryAsync(UserId));

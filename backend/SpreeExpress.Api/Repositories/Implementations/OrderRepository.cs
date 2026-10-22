@@ -1,3 +1,4 @@
+// Đặt vào: D:\spreeexpress_supabase\spreeexpress\backend\SpreeExpress.Api\Repositories\Implementations\
 using Microsoft.EntityFrameworkCore;
 using SpreeExpress.Api.Data;
 using SpreeExpress.Api.Entities;
@@ -20,6 +21,7 @@ public class OrderRepository : IOrderRepository
             .Include(o => o.Seller)
             .Include(o => o.PickupWarehouse)
             .Include(o => o.PickupShipper)
+            .Include(o => o.CurrentWarehouse)
             .FirstOrDefaultAsync(o => o.Id == id);
 
     private IQueryable<Order> DetailQuery() =>
@@ -27,6 +29,7 @@ public class OrderRepository : IOrderRepository
             .Include(o => o.Seller)
             .Include(o => o.PickupWarehouse)
             .Include(o => o.PickupShipper)
+            .Include(o => o.CurrentWarehouse)
             .Include(o => o.History).ThenInclude(h => h.ActorUser);
 
     public Task<Order?> GetDetailAsync(Guid id) =>
@@ -40,7 +43,8 @@ public class OrderRepository : IOrderRepository
         IQueryable<Order> query = _db.Orders.AsNoTracking()
             .Include(o => o.Seller)
             .Include(o => o.PickupWarehouse)
-            .Include(o => o.PickupShipper);
+            .Include(o => o.PickupShipper)
+            .Include(o => o.CurrentWarehouse);
 
         if (f.SellerId.HasValue)
         {
@@ -58,6 +62,12 @@ public class OrderRepository : IOrderRepository
         {
             var id = f.PickupShipperId.Value;
             query = query.Where(o => o.PickupShipperId == id);
+        }
+
+        if (f.CurrentWarehouseId.HasValue)
+        {
+            var id = f.CurrentWarehouseId.Value;
+            query = query.Where(o => o.CurrentWarehouseId == id);
         }
 
         if (f.Statuses is { Count: > 0 })
@@ -104,6 +114,47 @@ public class OrderRepository : IOrderRepository
                 o.Status != OrderStatus.Returned),
             Delivered = await mine.CountAsync(o => o.Status == OrderStatus.Delivered),
             CodPending = await mine.Where(o => o.Status == OrderStatus.Delivered).SumAsync(o => o.CodAmount),
+        };
+    }
+
+    public Task<Order?> GetTrackedByCodeAsync(string code) =>
+        _db.Orders
+            .Include(o => o.Seller)
+            .Include(o => o.PickupWarehouse)
+            .Include(o => o.PickupShipper)
+            .Include(o => o.CurrentWarehouse)
+            .FirstOrDefaultAsync(o => o.Code == code);
+
+    public async Task<SellerOrderCounts> GetOverallCountsAsync()
+    {
+        var all = _db.Orders.AsNoTracking();
+
+        return new SellerOrderCounts
+        {
+            Total = await all.CountAsync(o => o.Status != OrderStatus.Cancelled),
+            InProgress = await all.CountAsync(o =>
+                o.Status != OrderStatus.Cancelled &&
+                o.Status != OrderStatus.Delivered &&
+                o.Status != OrderStatus.Returned),
+            Delivered = await all.CountAsync(o => o.Status == OrderStatus.Delivered),
+            CodPending = await all.Where(o => o.Status == OrderStatus.Delivered).SumAsync(o => o.CodAmount),
+        };
+    }
+
+    public async Task<WarehouseOrderCounts> GetWarehouseCountsAsync(
+        Guid warehouseId, DateTime startOfTodayUtc, DateTime staleBeforeUtc)
+    {
+        var inventory = _db.Orders.AsNoTracking()
+            .Where(o => o.CurrentWarehouseId == warehouseId && o.Status == OrderStatus.InWarehouse);
+
+        return new WarehouseOrderCounts
+        {
+            Incoming = await _db.Orders.CountAsync(o =>
+                o.PickupWarehouseId == warehouseId && o.Status == OrderStatus.PickedUp),
+            Inventory = await inventory.CountAsync(),
+            ReceivedToday = await _db.Orders.CountAsync(o =>
+                o.CurrentWarehouseId == warehouseId && o.ReceivedAt >= startOfTodayUtc),
+            Stale = await inventory.CountAsync(o => o.ReceivedAt < staleBeforeUtc),
         };
     }
 

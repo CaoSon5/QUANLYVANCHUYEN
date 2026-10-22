@@ -1,3 +1,4 @@
+// Đặt vào: D:\spreeexpress_supabase\spreeexpress\backend\SpreeExpress.Api\DTOs\
 using System.ComponentModel.DataAnnotations;
 
 namespace SpreeExpress.Api.DTOs;
@@ -126,6 +127,12 @@ public class OrderDto
     public DateTime? AcceptedAt { get; set; }
     public DateTime? PickedUpAt { get; set; }
 
+    // Đang nằm ở kho nào (sau khi nhập kho)
+    public string? CurrentWarehouseCode { get; set; }
+    public string? CurrentWarehouseName { get; set; }
+    public DateTime? ReceivedAt { get; set; }
+    public int? ReceivedQuantity { get; set; }
+
     // Người bán còn sửa / hủy được không (chỉ khi chưa có shipper nhận)
     public bool CanModify { get; set; }
 
@@ -142,4 +149,25 @@ public class OrderSummaryDto
     public decimal CodPending { get; set; }
     public int PendingPickup { get; set; }
     public int AcceptedPickup { get; set; }
+
+    // Nhân viên kho
+    public int Incoming { get; set; }       // đang trên đường về kho
+    public int Inventory { get; set; }      // đang lưu trong kho
+    public int ReceivedToday { get; set; }  // nhập kho hôm nay
+    public int Stale48h { get; set; }       // lưu quá 48 giờ
+}
+
+// Nhân viên kho nhập hàng vào kho bằng mã vận đơn (quét hoặc gõ)
+public class ReceiveOrderRequest
+{
+    [Required(ErrorMessage = "Vui lòng nhập mã vận đơn")]
+    [StringLength(30, ErrorMessage = "Mã vận đơn không hợp lệ")]
+    public string Code { get; set; } = string.Empty;
+
+    // Bỏ trống = nhận đủ số kiện shipper đã lấy. Nhập khác để ghi nhận thiếu/thừa.
+    [Range(1, 1000, ErrorMessage = "Số kiện nhận phải từ 1 đến 1000")]
+    public int? ReceivedQuantity { get; set; }
+
+    [StringLength(500, ErrorMessage = "Ghi chú tối đa 500 ký tự")]
+    public string? Note { get; set; }
 }

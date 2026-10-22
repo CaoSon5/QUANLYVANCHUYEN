@@ -1,3 +1,4 @@
+// Đặt vào: D:\spreeexpress_supabase\spreeexpress\backend\SpreeExpress.Api\Services\Implementations\
 using System.Text.RegularExpressions;
 using SpreeExpress.Api.DTOs;
 using SpreeExpress.Api.Entities;
@@ -173,6 +174,36 @@ public class OrderService : IOrderService
             };
         }
 
+        if (user.Role == UserRole.Warehouse)
+        {
+            if (!user.WarehouseId.HasValue) return new OrderSummaryDto();
+
+            // Ngày mới tính theo giờ Việt Nam (UTC+7)
+            var startOfTodayUtc = DateTime.UtcNow.AddHours(7).Date.AddHours(-7);
+            var staleBeforeUtc = DateTime.UtcNow.AddHours(-48);
+            var c = await _orders.GetWarehouseCountsAsync(user.WarehouseId.Value, startOfTodayUtc, staleBeforeUtc);
+
+            return new OrderSummaryDto
+            {
+                Incoming = c.Incoming,
+                Inventory = c.Inventory,
+                ReceivedToday = c.ReceivedToday,
+                Stale48h = c.Stale,
+            };
+        }
+
+        if (user.Role == UserRole.Admin || user.Role == UserRole.Dispatcher)
+        {
+            var c = await _orders.GetOverallCountsAsync();
+            return new OrderSummaryDto
+            {
+                Total = c.Total,
+                InProgress = c.InProgress,
+                Delivered = c.Delivered,
+                CodPending = c.CodPending,
+            };
+        }
+
         return new OrderSummaryDto();
     }
 
@@ -278,6 +309,96 @@ public class OrderService : IOrderService
         return await LoadDtoAsync(order.Id, canModify: false);
     }
 
+    // ================= ADMIN, ĐIỀU PHỐI: XEM MỌI ĐƠN =================
+
+    public async Task<PagedResult<OrderDto>> ListAllAsync(string? search, string? status, int page, int pageSize)
+    {
+        var filter = new OrderFilter
+        {
+            Search = search?.Trim(),
+            Statuses = string.IsNullOrWhiteSpace(status) ? null : new List<OrderStatus> { ParseStatus(status) },
+        };
+        return await SearchAsync(filter, page, pageSize, canModifyForSeller: false);
+    }
+
+    // ================= NHÂN VIÊN KHO =================
+
+    // FR32, FR40: xem hàng của kho mình (không thấy kho khác)
+    public async Task<PagedResult<OrderDto>> ListWarehouseOrdersAsync(
+        Guid staffId, string scope, string? search, int page, int pageSize)
+    {
+        var staff = await GetWarehouseStaffAsync(staffId);
+
+        var filter = new OrderFilter { Search = search?.Trim(), OldestFirst = true };
+        if (scope == "incoming")
+        {
+            // Shipper đã lấy hàng, đang mang về kho của đơn này
+            filter.PickupWarehouseId = staff.WarehouseId;
+            filter.Statuses = new List<OrderStatus> { OrderStatus.PickedUp };
+        }
+        else
+        {
+            filter.CurrentWarehouseId = staff.WarehouseId;
+            filter.Statuses = new List<OrderStatus> { OrderStatus.InWarehouse };
+        }
+
+        return await SearchAsync(filter, page, pageSize, canModifyForSeller: false);
+    }
+
+    // FR29: nhập hàng vào kho bằng cách quét (hoặc gõ) mã vận đơn khi shipper mang hàng về
+    public async Task<OrderDto> ReceiveAtWarehouseAsync(Guid staffId, ReceiveOrderRequest request)
+    {
+        var staff = await GetWarehouseStaffAsync(staffId);
+
+        var code = request.Code.Trim().ToUpperInvariant();
+        var order = await _orders.GetTrackedByCodeAsync(code)
+                    ?? throw new AppException($"Không tìm thấy đơn hàng {code}", 404);
+
+        // Mỗi kho chỉ nhập hàng của kho mình
+        if (order.PickupWarehouseId != staff.WarehouseId)
+            throw new AppException($"Đơn {code} thuộc kho {order.PickupWarehouse?.Code}, không phải kho của bạn", 403);
+
+        if (order.Status == OrderStatus.InWarehouse && order.CurrentWarehouseId == staff.WarehouseId)
+            throw new AppException($"Đơn {code} đã được nhập kho trước đó", 409);
+
+        if (order.Status != OrderStatus.PickedUp)
+        {
+            var reason = order.Status switch
+            {
+                OrderStatus.PendingPickup => "chưa có shipper nhận",
+                OrderStatus.PickupAccepted => "shipper chưa lấy hàng",
+                OrderStatus.Cancelled => "đã bị hủy",
+                _ => "không ở trạng thái chờ nhập kho",
+            };
+            throw new AppException($"Không nhập kho được: đơn {code} {reason}", 409);
+        }
+
+        var expected = order.PickedQuantity ?? order.Quantity;
+        var received = request.ReceivedQuantity ?? expected;
+        var note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim();
+
+        order.Status = OrderStatus.InWarehouse;
+        order.CurrentWarehouseId = staff.WarehouseId;
+        order.ReceivedAt = DateTime.UtcNow;
+        order.ReceivedQuantity = received;
+        order.UpdatedAt = DateTime.UtcNow;
+
+        var text = $"Đã nhập kho {order.PickupWarehouse?.Code}: nhận {received}/{expected} kiện";
+        if (received != expected) text += " (lệch so với số kiện shipper đã lấy)";
+        if (note is not null) text += $". Ghi chú: {note}";
+
+        _orders.AddHistory(new OrderStatusHistory
+        {
+            OrderId = order.Id,
+            Status = OrderStatus.InWarehouse,
+            Note = text,
+            ActorUserId = staffId,
+        });
+
+        await _orders.SaveAsync();
+        return await LoadDtoAsync(order.Id, canModify: false);
+    }
+
     // ================= helpers =================
 
     private async Task<PagedResult<OrderDto>> SearchAsync(OrderFilter filter, int page, int pageSize, bool canModifyForSeller)
@@ -305,6 +426,16 @@ public class OrderService : IOrderService
 
     private async Task<User> GetUserAsync(Guid userId) =>
         await _users.GetByIdAsync(userId) ?? throw new AppException("Không tìm thấy tài khoản", 404);
+
+    private async Task<User> GetWarehouseStaffAsync(Guid staffId)
+    {
+        var user = await GetUserAsync(staffId);
+        if (user.Role != UserRole.Warehouse)
+            throw new AppException("Chỉ nhân viên kho mới dùng được chức năng này", 403);
+        if (!user.WarehouseId.HasValue)
+            throw new AppException("Tài khoản chưa được gán kho. Vui lòng liên hệ quản lý.", 400);
+        return user;
+    }
 
     private async Task<User> GetShipperWithWarehouseAsync(Guid shipperId)
     {
@@ -377,7 +508,8 @@ public class OrderService : IOrderService
         UserRole.Seller => order.SellerId == viewer.Id,
         UserRole.Shipper => order.PickupShipperId == viewer.Id
                             || (order.Status == OrderStatus.PendingPickup && order.PickupWarehouseId == viewer.WarehouseId),
-        UserRole.Warehouse => order.PickupWarehouseId == viewer.WarehouseId,
+        UserRole.Warehouse => viewer.WarehouseId.HasValue
+                              && (order.PickupWarehouseId == viewer.WarehouseId || order.CurrentWarehouseId == viewer.WarehouseId),
         _ => false,
     };
 
@@ -428,6 +560,10 @@ public class OrderService : IOrderService
         CreatedAt = o.CreatedAt,
         AcceptedAt = o.AcceptedAt,
         PickedUpAt = o.PickedUpAt,
+        CurrentWarehouseCode = o.CurrentWarehouse?.Code,
+        CurrentWarehouseName = o.CurrentWarehouse?.Name,
+        ReceivedAt = o.ReceivedAt,
+        ReceivedQuantity = o.ReceivedQuantity,
         CanModify = canModify,
         History = withHistory
             ? o.History.OrderBy(h => h.CreatedAt).Select(h => new OrderHistoryDto

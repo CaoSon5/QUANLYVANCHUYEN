@@ -1,4 +1,4 @@
-// Đặt vào: D:\spreeexpress\frontend\src\pages\Dashboard\
+// Đặt vào: D:\spreeexpress_supabase\spreeexpress\frontend\src\pages\Dashboard\
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '../../components/common/PageHeader';
@@ -26,7 +26,7 @@ export default function RoleDashboard({ config }) {
   const [live, setLive] = useState(null);
 
   useEffect(() => {
-    if (role !== 'seller' && role !== 'shipper') return;
+    if (role !== 'seller' && role !== 'shipper' && role !== 'warehouse') return;
     orderApi.summary().then(setLive).catch(() => {});
   }, [role]);
 
@@ -39,6 +39,12 @@ export default function RoleDashboard({ config }) {
     // Đơn chờ giao, đang giao, COD: chưa có phần giao hàng nên giữ "—"
     liveValues = [live.pendingPickup, '—', '—', '—'];
     liveSubtitle = `Có ${live.pendingPickup} yêu cầu lấy hàng đang chờ tại kho của bạn, bạn đã nhận ${live.acceptedPickup} đơn chưa lấy.`;
+  }
+
+  if (live && role === 'warehouse') {
+    // Đã xuất hôm nay: chưa có phần xuất kho nên giữ "—"
+    liveValues = [live.receivedToday, '—', live.inventory, live.stale48h];
+    liveSubtitle = `Có ${live.incoming} đơn đang trên đường về kho, ${live.inventory} đơn đang lưu trong kho.`;
   }
 
   return (

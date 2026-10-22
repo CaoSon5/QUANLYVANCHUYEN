@@ -1,3 +1,4 @@
+// Đặt vào: D:\spreeexpress_supabase\spreeexpress\backend\SpreeExpress.Api\Services\Interfaces\
 using SpreeExpress.Api.DTOs;
 
 namespace SpreeExpress.Api.Services.Interfaces;
@@ -22,4 +23,11 @@ public interface IOrderService
     Task<PagedResult<OrderDto>> ListMyPickupsAsync(Guid shipperId, string? status, string? search, int page, int pageSize);
     Task<OrderDto> AcceptPickupAsync(Guid shipperId, Guid orderId);
     Task<OrderDto> ConfirmPickupAsync(Guid shipperId, Guid orderId, ConfirmPickupRequest request);
+
+    // Admin, Điều phối viên: xem mọi đơn trong hệ thống
+    Task<PagedResult<OrderDto>> ListAllAsync(string? search, string? status, int page, int pageSize);
+
+    // Nhân viên kho: scope = "incoming" (đang về kho) | "inventory" (đang lưu kho)
+    Task<PagedResult<OrderDto>> ListWarehouseOrdersAsync(Guid staffId, string scope, string? search, int page, int pageSize);
+    Task<OrderDto> ReceiveAtWarehouseAsync(Guid staffId, ReceiveOrderRequest request);
 }
