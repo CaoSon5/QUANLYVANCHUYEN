@@ -19,7 +19,7 @@ public class WarehouseOrdersController : ControllerBase
 
     private Guid UserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-    // scope = incoming (đang trên đường về kho) | inventory (đang lưu trong kho)
+    // scope = incoming (đang trên đường về kho) | inventory (đang lưu trong kho) | dispatch (chờ xuất cho shipper)
     [HttpGet]
     public async Task<ActionResult<PagedResult<OrderDto>>> List(
         [FromQuery] string scope = "inventory",
@@ -31,4 +31,9 @@ public class WarehouseOrdersController : ControllerBase
     [HttpPost("receive")]
     public async Task<ActionResult<OrderDto>> Receive(ReceiveOrderRequest request) =>
         Ok(await _orders.ReceiveAtWarehouseAsync(UserId, request));
+
+    // Xuất hàng cho shipper đã nhận giao (FR31)
+    [HttpPost("dispatch")]
+    public async Task<ActionResult<OrderDto>> Dispatch(DispatchOrderRequest request) =>
+        Ok(await _orders.DispatchToShipperAsync(UserId, request));
 }

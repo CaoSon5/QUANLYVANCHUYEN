@@ -22,6 +22,7 @@ public class OrderRepository : IOrderRepository
             .Include(o => o.PickupWarehouse)
             .Include(o => o.PickupShipper)
             .Include(o => o.CurrentWarehouse)
+            .Include(o => o.DeliveryShipper)
             .FirstOrDefaultAsync(o => o.Id == id);
 
     private IQueryable<Order> DetailQuery() =>
@@ -30,6 +31,7 @@ public class OrderRepository : IOrderRepository
             .Include(o => o.PickupWarehouse)
             .Include(o => o.PickupShipper)
             .Include(o => o.CurrentWarehouse)
+            .Include(o => o.DeliveryShipper)
             .Include(o => o.History).ThenInclude(h => h.ActorUser);
 
     public Task<Order?> GetDetailAsync(Guid id) =>
@@ -44,7 +46,8 @@ public class OrderRepository : IOrderRepository
             .Include(o => o.Seller)
             .Include(o => o.PickupWarehouse)
             .Include(o => o.PickupShipper)
-            .Include(o => o.CurrentWarehouse);
+            .Include(o => o.CurrentWarehouse)
+            .Include(o => o.DeliveryShipper);
 
         if (f.SellerId.HasValue)
         {
@@ -62,6 +65,12 @@ public class OrderRepository : IOrderRepository
         {
             var id = f.PickupShipperId.Value;
             query = query.Where(o => o.PickupShipperId == id);
+        }
+
+        if (f.DeliveryShipperId.HasValue)
+        {
+            var id = f.DeliveryShipperId.Value;
+            query = query.Where(o => o.DeliveryShipperId == id);
         }
 
         if (f.CurrentWarehouseId.HasValue)
@@ -113,7 +122,7 @@ public class OrderRepository : IOrderRepository
                 o.Status != OrderStatus.Delivered &&
                 o.Status != OrderStatus.Returned),
             Delivered = await mine.CountAsync(o => o.Status == OrderStatus.Delivered),
-            CodPending = await mine.Where(o => o.Status == OrderStatus.Delivered).SumAsync(o => o.CodAmount),
+            CodPending = await mine.Where(o => o.Status == OrderStatus.Delivered).SumAsync(o => o.CodCollected ?? o.CodAmount),
         };
     }
 
@@ -123,6 +132,7 @@ public class OrderRepository : IOrderRepository
             .Include(o => o.PickupWarehouse)
             .Include(o => o.PickupShipper)
             .Include(o => o.CurrentWarehouse)
+            .Include(o => o.DeliveryShipper)
             .FirstOrDefaultAsync(o => o.Code == code);
 
     public async Task<SellerOrderCounts> GetOverallCountsAsync()
@@ -137,15 +147,18 @@ public class OrderRepository : IOrderRepository
                 o.Status != OrderStatus.Delivered &&
                 o.Status != OrderStatus.Returned),
             Delivered = await all.CountAsync(o => o.Status == OrderStatus.Delivered),
-            CodPending = await all.Where(o => o.Status == OrderStatus.Delivered).SumAsync(o => o.CodAmount),
+            CodPending = await all.Where(o => o.Status == OrderStatus.Delivered).SumAsync(o => o.CodCollected ?? o.CodAmount),
         };
     }
 
     public async Task<WarehouseOrderCounts> GetWarehouseCountsAsync(
         Guid warehouseId, DateTime startOfTodayUtc, DateTime staleBeforeUtc)
     {
+        // Hàng đang nằm trong kho: đã nhập kho, kể cả đơn shipper đã nhận giao nhưng kho chưa xuất
         var inventory = _db.Orders.AsNoTracking()
-            .Where(o => o.CurrentWarehouseId == warehouseId && o.Status == OrderStatus.InWarehouse);
+            .Where(o => o.CurrentWarehouseId == warehouseId &&
+                        (o.Status == OrderStatus.InWarehouse || o.Status == OrderStatus.DeliveryAccepted ||
+                         o.Status == OrderStatus.DeliveryFailed || o.Status == OrderStatus.Returning));
 
         return new WarehouseOrderCounts
         {
@@ -155,6 +168,10 @@ public class OrderRepository : IOrderRepository
             ReceivedToday = await _db.Orders.CountAsync(o =>
                 o.CurrentWarehouseId == warehouseId && o.ReceivedAt >= startOfTodayUtc),
             Stale = await inventory.CountAsync(o => o.ReceivedAt < staleBeforeUtc),
+            AwaitingDispatch = await _db.Orders.CountAsync(o =>
+                o.CurrentWarehouseId == warehouseId && o.Status == OrderStatus.DeliveryAccepted),
+            DispatchedToday = await _db.Orders.CountAsync(o =>
+                o.CurrentWarehouseId == warehouseId && o.DispatchedAt >= startOfTodayUtc),
         };
     }
 
@@ -163,6 +180,36 @@ public class OrderRepository : IOrderRepository
 
     public Task<int> CountAcceptedPickupAsync(Guid shipperId) =>
         _db.Orders.CountAsync(o => o.PickupShipperId == shipperId && o.Status == OrderStatus.PickupAccepted);
+
+    public Task<int> CountDeliverableAsync(Guid warehouseId) =>
+        _db.Orders.CountAsync(o => o.CurrentWarehouseId == warehouseId &&
+            (o.Status == OrderStatus.InWarehouse || o.Status == OrderStatus.DeliveryFailed));
+
+    public Task<int> CountDeliveryAsync(Guid shipperId, OrderStatus status) =>
+        _db.Orders.CountAsync(o => o.DeliveryShipperId == shipperId && o.Status == status);
+
+    public Task<decimal> SumCodCollectedByShipperAsync(Guid shipperId) =>
+        _db.Orders
+            .Where(o => o.DeliveryShipperId == shipperId && o.Status == OrderStatus.Delivered)
+            .SumAsync(o => o.CodCollected ?? 0m);
+
+    public Task<List<OrderPhotoInfo>> GetPhotoInfosAsync(Guid orderId) =>
+        _db.OrderPhotos.AsNoTracking()
+            .Where(p => p.OrderId == orderId)
+            .OrderBy(p => p.CreatedAt)
+            .Select(p => new OrderPhotoInfo
+            {
+                Id = p.Id,
+                Kind = p.Kind,
+                CreatedAt = p.CreatedAt,
+                UploadedByName = p.UploadedBy != null ? p.UploadedBy.FullName : null,
+            })
+            .ToListAsync();
+
+    public Task<OrderPhoto?> GetPhotoAsync(Guid orderId, Guid photoId) =>
+        _db.OrderPhotos.AsNoTracking().FirstOrDefaultAsync(p => p.Id == photoId && p.OrderId == orderId);
+
+    public void AddPhoto(OrderPhoto photo) => _db.OrderPhotos.Add(photo);
 
     public async Task AddAsync(Order order)
     {

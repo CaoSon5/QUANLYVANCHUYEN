@@ -51,6 +51,18 @@ public class Order
     public DateTime? ReceivedAt { get; set; }
     public int? ReceivedQuantity { get; set; }
 
+    // Giao hàng: shipper tự nhận đơn cần giao, kho xuất hàng cho shipper
+    public Guid? DeliveryShipperId { get; set; }
+    public User? DeliveryShipper { get; set; }
+    public DateTime? DeliveryAcceptedAt { get; set; }
+    public DateTime? DispatchedAt { get; set; }
+
+    // Kết quả giao hàng
+    public int DeliveryAttempts { get; set; }            // số lần giao thất bại đã ghi nhận
+    public DateTime? DeliveredAt { get; set; }
+    public decimal? CodCollected { get; set; }            // số tiền COD shipper thực thu
+    public string? LastFailureReason { get; set; }        // no_contact | refused | wrong_address
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

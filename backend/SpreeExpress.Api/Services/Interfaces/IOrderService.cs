@@ -30,4 +30,19 @@ public interface IOrderService
     // Nhân viên kho: scope = "incoming" (đang về kho) | "inventory" (đang lưu kho)
     Task<PagedResult<OrderDto>> ListWarehouseOrdersAsync(Guid staffId, string scope, string? search, int page, int pageSize);
     Task<OrderDto> ReceiveAtWarehouseAsync(Guid staffId, ReceiveOrderRequest request);
+
+    // Nhân viên kho: xuất hàng cho shipper đã nhận giao (FR31)
+    Task<OrderDto> DispatchToShipperAsync(Guid staffId, DispatchOrderRequest request);
+
+    // Shipper: xem đơn chờ giao tại kho mình và tự nhận giao (FR52)
+    Task<PagedResult<OrderDto>> ListDeliverableAsync(Guid shipperId, string? search, int page, int pageSize);
+    Task<PagedResult<OrderDto>> ListMyDeliveriesAsync(Guid shipperId, string? status, string? search, int page, int pageSize);
+    Task<OrderDto> AcceptDeliveryAsync(Guid shipperId, Guid orderId);
+
+    // Shipper cập nhật kết quả giao (FR53, FR54, FR55, FR56)
+    Task<OrderDto> CompleteDeliveryAsync(Guid shipperId, Guid orderId, decimal? collectedAmount, string? note, List<PhotoUpload> photos);
+    Task<OrderDto> FailDeliveryAsync(Guid shipperId, Guid orderId, string reason, string? note, List<PhotoUpload> photos);
+
+    // Ảnh minh chứng giao hàng
+    Task<(byte[] Data, string ContentType)> GetPhotoAsync(Guid userId, Guid orderId, Guid photoId);
 }

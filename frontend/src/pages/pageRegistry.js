@@ -7,8 +7,11 @@ import TrackingPage from './Orders/TrackingPage';
 import PendingPickupPage from './Pickups/PendingPickupPage';
 import ConfirmPickupPage from './Pickups/ConfirmPickupPage';
 import AdminOrdersPage from './Orders/AdminOrdersPage';
-import InboundPage from './WarehouseOps/InboundPage';
-import InventoryPage from './WarehouseOps/InventoryPage';
+import InboundPage from './Warehouses/InboundPage';
+import InventoryPage from './Warehouses/InventoryPage';
+import OutboundPage from './Warehouses/OutboundPage';
+import PendingDeliveryPage from './Deliveries/PendingDeliveryPage';
+import DeliveringPage from './Deliveries/DeliveringPage';
 
 // Trang đã làm xong chức năng thật. Khóa dạng "<role>/<slug>".
 // Mục menu nào chưa có ở đây sẽ hiện trang khung (GenericPage).
@@ -24,4 +27,7 @@ export const PAGES = {
   'dispatcher/orders': AdminOrdersPage,
   'warehouse/inbound': InboundPage,
   'warehouse/inventory': InventoryPage,
+  'warehouse/outbound': OutboundPage,
+  'shipper/pending-delivery': PendingDeliveryPage,
+  'shipper/delivering': DeliveringPage,
 };

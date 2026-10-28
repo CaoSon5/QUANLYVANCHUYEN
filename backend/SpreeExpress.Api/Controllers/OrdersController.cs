@@ -80,4 +80,13 @@ public class OrdersController : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<OrderDto>> Get(Guid id) =>
         Ok(await _orders.GetDetailAsync(UserId, id));
+
+    // Ảnh minh chứng giao hàng (cần đăng nhập và có quyền xem đơn)
+    [HttpGet("{id:guid}/photos/{photoId:guid}")]
+    public async Task<IActionResult> Photo(Guid id, Guid photoId)
+    {
+        var (data, contentType) = await _orders.GetPhotoAsync(UserId, id, photoId);
+        Response.Headers["X-Content-Type-Options"] = "nosniff";
+        return File(data, contentType);
+    }
 }

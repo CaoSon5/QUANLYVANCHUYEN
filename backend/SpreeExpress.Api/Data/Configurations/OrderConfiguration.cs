@@ -35,17 +35,21 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
         b.Property(x => x.DeclaredValue).HasPrecision(18, 2);
         b.Property(x => x.CodAmount).HasPrecision(18, 2);
         b.Property(x => x.ShippingFee).HasPrecision(18, 2);
+        b.Property(x => x.CodCollected).HasPrecision(18, 2);
+        b.Property(x => x.LastFailureReason).HasMaxLength(30);
 
         b.HasIndex(x => x.Code).IsUnique();
         b.HasIndex(x => x.SellerId);
         b.HasIndex(x => new { x.PickupWarehouseId, x.Status });
         b.HasIndex(x => x.PickupShipperId);
         b.HasIndex(x => new { x.CurrentWarehouseId, x.Status });
+        b.HasIndex(x => x.DeliveryShipperId);
 
         b.HasOne(x => x.Seller).WithMany().HasForeignKey(x => x.SellerId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne(x => x.PickupWarehouse).WithMany().HasForeignKey(x => x.PickupWarehouseId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne(x => x.PickupShipper).WithMany().HasForeignKey(x => x.PickupShipperId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne(x => x.CurrentWarehouse).WithMany().HasForeignKey(x => x.CurrentWarehouseId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne(x => x.DeliveryShipper).WithMany().HasForeignKey(x => x.DeliveryShipperId).OnDelete(DeleteBehavior.Restrict);
     }
 }
 
@@ -63,5 +67,23 @@ public class OrderStatusHistoryConfiguration : IEntityTypeConfiguration<OrderSta
 
         b.HasOne(x => x.Order).WithMany(x => x.History).HasForeignKey(x => x.OrderId).OnDelete(DeleteBehavior.Cascade);
         b.HasOne(x => x.ActorUser).WithMany().HasForeignKey(x => x.ActorUserId).OnDelete(DeleteBehavior.SetNull);
+    }
+}
+
+public class OrderPhotoConfiguration : IEntityTypeConfiguration<OrderPhoto>
+{
+    public void Configure(EntityTypeBuilder<OrderPhoto> b)
+    {
+        b.ToTable("order_photos");
+        b.HasKey(x => x.Id);
+
+        b.Property(x => x.Kind).IsRequired().HasMaxLength(20);
+        b.Property(x => x.ContentType).IsRequired().HasMaxLength(50);
+        b.Property(x => x.Data).IsRequired();
+
+        b.HasIndex(x => x.OrderId);
+
+        b.HasOne(x => x.Order).WithMany().HasForeignKey(x => x.OrderId).OnDelete(DeleteBehavior.Cascade);
+        b.HasOne(x => x.UploadedBy).WithMany().HasForeignKey(x => x.UploadedById).OnDelete(DeleteBehavior.SetNull);
     }
 }

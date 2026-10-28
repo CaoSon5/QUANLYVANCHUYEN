@@ -1,5 +1,6 @@
 // Đặt vào: D:\spreeexpress_supabase\spreeexpress\backend\SpreeExpress.Api\DTOs\
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http;
 
 namespace SpreeExpress.Api.DTOs;
 
@@ -133,6 +134,21 @@ public class OrderDto
     public DateTime? ReceivedAt { get; set; }
     public int? ReceivedQuantity { get; set; }
 
+    // Giao hàng
+    public Guid? DeliveryShipperId { get; set; }
+    public string? DeliveryShipperName { get; set; }
+    public string? DeliveryShipperPhone { get; set; }
+    public DateTime? DeliveryAcceptedAt { get; set; }
+    public DateTime? DispatchedAt { get; set; }
+
+    // Kết quả giao hàng
+    public int DeliveryAttempts { get; set; }       // số lần giao thất bại đã ghi nhận
+    public int MaxDeliveryAttempts { get; set; }    // số lần tối đa theo quy định
+    public DateTime? DeliveredAt { get; set; }
+    public decimal? CodCollected { get; set; }
+    public string? LastFailureReason { get; set; }
+    public List<OrderPhotoDto> Photos { get; set; } = new();
+
     // Người bán còn sửa / hủy được không (chỉ khi chưa có shipper nhận)
     public bool CanModify { get; set; }
 
@@ -155,6 +171,14 @@ public class OrderSummaryDto
     public int Inventory { get; set; }      // đang lưu trong kho
     public int ReceivedToday { get; set; }  // nhập kho hôm nay
     public int Stale48h { get; set; }       // lưu quá 48 giờ
+    public int AwaitingDispatch { get; set; } // shipper đã nhận giao, chờ kho xuất hàng
+    public int DispatchedToday { get; set; }  // đã xuất kho hôm nay
+
+    // Shipper giao hàng
+    public int PendingDelivery { get; set; }  // đơn chờ giao tại kho mình phụ trách
+    public int AcceptedDelivery { get; set; } // đã nhận giao, chưa lấy hàng ở kho
+    public int OutForDelivery { get; set; }   // đang đi giao
+    public decimal CodCollected { get; set; } // tổng COD shipper đã thu
 }
 
 // Nhân viên kho nhập hàng vào kho bằng mã vận đơn (quét hoặc gõ)
@@ -170,4 +194,53 @@ public class ReceiveOrderRequest
 
     [StringLength(500, ErrorMessage = "Ghi chú tối đa 500 ký tự")]
     public string? Note { get; set; }
+}
+
+// Nhân viên kho xuất hàng cho shipper bằng mã vận đơn
+public class DispatchOrderRequest
+{
+    [Required(ErrorMessage = "Vui lòng nhập mã vận đơn")]
+    [StringLength(30, ErrorMessage = "Mã vận đơn không hợp lệ")]
+    public string Code { get; set; } = string.Empty;
+}
+
+public class OrderPhotoDto
+{
+    public Guid Id { get; set; }
+    public string Kind { get; set; } = string.Empty;   // delivered | failed
+    public DateTime CreatedAt { get; set; }
+    public string? UploadedByName { get; set; }
+}
+
+// Ảnh đã đọc và kiểm tra từ form, sẵn sàng lưu
+public class PhotoUpload
+{
+    public string ContentType { get; set; } = string.Empty;
+    public byte[] Data { get; set; } = Array.Empty<byte>();
+}
+
+// Giao thành công. Gửi dạng multipart/form-data vì có thể kèm ảnh.
+public class DeliverForm
+{
+    // Số COD thực thu. Bỏ trống = đúng số COD của đơn.
+    [Range(0, 1000000000, ErrorMessage = "Số tiền thu không hợp lệ")]
+    public decimal? CollectedAmount { get; set; }
+
+    [StringLength(500, ErrorMessage = "Ghi chú tối đa 500 ký tự")]
+    public string? Note { get; set; }
+
+    public List<IFormFile>? Photos { get; set; }
+}
+
+// Giao thất bại kèm lý do (FR54)
+public class FailForm
+{
+    // no_contact | refused | wrong_address
+    [Required(ErrorMessage = "Vui lòng chọn lý do giao thất bại")]
+    public string Reason { get; set; } = string.Empty;
+
+    [StringLength(500, ErrorMessage = "Ghi chú tối đa 500 ký tự")]
+    public string? Note { get; set; }
+
+    public List<IFormFile>? Photos { get; set; }
 }

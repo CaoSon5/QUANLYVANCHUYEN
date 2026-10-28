@@ -1,4 +1,5 @@
 // Đặt vào: D:\spreeexpress_supabase\spreeexpress\backend\SpreeExpress.Api\Services\Implementations\
+using System.Globalization;
 using System.Text.RegularExpressions;
 using SpreeExpress.Api.DTOs;
 using SpreeExpress.Api.Entities;
@@ -14,11 +15,14 @@ public class OrderService : IOrderService
     private readonly IUserRepository _users;
     private readonly IWarehouseRepository _warehouses;
     private readonly ShippingFeeCalculator _fees;
+    private readonly int _maxAttempts;
 
     public OrderService(
         IOrderRepository orders, IUserRepository users,
-        IWarehouseRepository warehouses, ShippingFeeCalculator fees)
+        IWarehouseRepository warehouses, ShippingFeeCalculator fees, IConfiguration config)
     {
+        // Số lần giao thất bại tối đa (FR55). Đổi bằng cấu hình Delivery:MaxAttempts, mặc định 3.
+        _maxAttempts = Math.Max(1, config.GetValue("Delivery:MaxAttempts", 3));
         _orders = orders;
         _users = users;
         _warehouses = warehouses;
@@ -130,7 +134,7 @@ public class OrderService : IOrderService
         if (order is null || order.SellerId != sellerId)
             throw new AppException("Không tìm thấy đơn hàng với mã này", 404);
 
-        return ToDto(order, canModify: order.Status == OrderStatus.PendingPickup, withHistory: true);
+        return await WithPhotosAsync(ToDto(order, canModify: order.Status == OrderStatus.PendingPickup, withHistory: true));
     }
 
     // ================= XEM CHI TIẾT / TỔNG QUAN =================
@@ -146,7 +150,7 @@ public class OrderService : IOrderService
         var canModify = viewer.Role == UserRole.Seller
                         && order.SellerId == viewer.Id
                         && order.Status == OrderStatus.PendingPickup;
-        return ToDto(order, canModify, withHistory: true);
+        return await WithPhotosAsync(ToDto(order, canModify, withHistory: true));
     }
 
     public async Task<OrderSummaryDto> GetSummaryAsync(Guid userId)
@@ -171,6 +175,10 @@ public class OrderService : IOrderService
             {
                 PendingPickup = user.WarehouseId.HasValue ? await _orders.CountPendingPickupAsync(user.WarehouseId.Value) : 0,
                 AcceptedPickup = await _orders.CountAcceptedPickupAsync(userId),
+                PendingDelivery = user.WarehouseId.HasValue ? await _orders.CountDeliverableAsync(user.WarehouseId.Value) : 0,
+                AcceptedDelivery = await _orders.CountDeliveryAsync(userId, OrderStatus.DeliveryAccepted),
+                OutForDelivery = await _orders.CountDeliveryAsync(userId, OrderStatus.OutForDelivery),
+                CodCollected = await _orders.SumCodCollectedByShipperAsync(userId),
             };
         }
 
@@ -189,6 +197,8 @@ public class OrderService : IOrderService
                 Inventory = c.Inventory,
                 ReceivedToday = c.ReceivedToday,
                 Stale48h = c.Stale,
+                AwaitingDispatch = c.AwaitingDispatch,
+                DispatchedToday = c.DispatchedToday,
             };
         }
 
@@ -336,10 +346,20 @@ public class OrderService : IOrderService
             filter.PickupWarehouseId = staff.WarehouseId;
             filter.Statuses = new List<OrderStatus> { OrderStatus.PickedUp };
         }
+        else if (scope == "dispatch")
+        {
+            // Shipper đã nhận giao, đang chờ kho xuất hàng
+            filter.CurrentWarehouseId = staff.WarehouseId;
+            filter.Statuses = new List<OrderStatus> { OrderStatus.DeliveryAccepted };
+        }
         else
         {
+            // Tồn kho: hàng đang nằm trong kho (kể cả đơn đã có shipper nhận giao nhưng chưa xuất)
             filter.CurrentWarehouseId = staff.WarehouseId;
-            filter.Statuses = new List<OrderStatus> { OrderStatus.InWarehouse };
+            filter.Statuses = new List<OrderStatus>
+            {
+                OrderStatus.InWarehouse, OrderStatus.DeliveryAccepted, OrderStatus.DeliveryFailed, OrderStatus.Returning,
+            };
         }
 
         return await SearchAsync(filter, page, pageSize, canModifyForSeller: false);
@@ -399,6 +419,257 @@ public class OrderService : IOrderService
         return await LoadDtoAsync(order.Id, canModify: false);
     }
 
+    // FR31: kho xuất hàng cho shipper đã nhận giao. Nhân viên kho quét mã để đối chiếu và bàn giao.
+    public async Task<OrderDto> DispatchToShipperAsync(Guid staffId, DispatchOrderRequest request)
+    {
+        var staff = await GetWarehouseStaffAsync(staffId);
+
+        var code = request.Code.Trim().ToUpperInvariant();
+        var order = await _orders.GetTrackedByCodeAsync(code)
+                    ?? throw new AppException($"Không tìm thấy đơn hàng {code}", 404);
+
+        if (order.CurrentWarehouseId != staff.WarehouseId)
+            throw new AppException($"Đơn {code} không nằm trong kho của bạn", 403);
+
+        if (order.Status != OrderStatus.DeliveryAccepted)
+        {
+            var reason = order.Status switch
+            {
+                OrderStatus.InWarehouse => "chưa có shipper nào nhận giao",
+                OrderStatus.OutForDelivery => "đã được xuất kho trước đó",
+                OrderStatus.Cancelled => "đã bị hủy",
+                _ => "không ở trạng thái chờ xuất kho",
+            };
+            throw new AppException($"Không xuất kho được: đơn {code} {reason}", 409);
+        }
+
+        var shipperName = order.DeliveryShipper?.FullName ?? "shipper";
+
+        order.Status = OrderStatus.OutForDelivery;
+        order.DispatchedAt = DateTime.UtcNow;
+        order.UpdatedAt = DateTime.UtcNow;
+
+        _orders.AddHistory(new OrderStatusHistory
+        {
+            OrderId = order.Id,
+            Status = OrderStatus.OutForDelivery,
+            Note = $"Kho {order.CurrentWarehouse?.Code} đã xuất hàng cho shipper {shipperName}, đang đi giao",
+            ActorUserId = staffId,
+        });
+
+        await _orders.SaveAsync();
+        return await LoadDtoAsync(order.Id, canModify: false);
+    }
+
+    // ================= SHIPPER NHẬN GIAO HÀNG =================
+
+    // FR52: đơn đã nhập kho tại kho mình phụ trách, đang chờ shipper nhận giao
+    public async Task<PagedResult<OrderDto>> ListDeliverableAsync(
+        Guid shipperId, string? search, int page, int pageSize)
+    {
+        var shipper = await GetShipperWithWarehouseAsync(shipperId);
+
+        var filter = new OrderFilter
+        {
+            CurrentWarehouseId = shipper.WarehouseId,
+            Statuses = new List<OrderStatus> { OrderStatus.InWarehouse, OrderStatus.DeliveryFailed },
+            Search = search?.Trim(),
+            OldestFirst = true,
+        };
+        return await SearchAsync(filter, page, pageSize, canModifyForSeller: false);
+    }
+
+    // status: accepted (đã nhận, chờ lấy hàng ở kho) | out_for_delivery (đang đi giao)
+    public async Task<PagedResult<OrderDto>> ListMyDeliveriesAsync(
+        Guid shipperId, string? status, string? search, int page, int pageSize)
+    {
+        var statuses = status switch
+        {
+            "accepted" => new List<OrderStatus> { OrderStatus.DeliveryAccepted },
+            "out_for_delivery" => new List<OrderStatus> { OrderStatus.OutForDelivery },
+            _ => new List<OrderStatus> { OrderStatus.DeliveryAccepted, OrderStatus.OutForDelivery },
+        };
+
+        var filter = new OrderFilter
+        {
+            DeliveryShipperId = shipperId,
+            Statuses = statuses,
+            Search = search?.Trim(),
+            OldestFirst = true,
+        };
+        return await SearchAsync(filter, page, pageSize, canModifyForSeller: false);
+    }
+
+    // FR52: shipper tự chọn đơn muốn giao
+    public async Task<OrderDto> AcceptDeliveryAsync(Guid shipperId, Guid orderId)
+    {
+        var shipper = await GetShipperWithWarehouseAsync(shipperId);
+        var order = await _orders.GetTrackedAsync(orderId)
+                    ?? throw new AppException("Không tìm thấy đơn hàng", 404);
+
+        if (order.CurrentWarehouseId != shipper.WarehouseId)
+            throw new AppException("Đơn này không nằm ở kho bạn phụ trách", 403);
+        if (order.Status != OrderStatus.InWarehouse && order.Status != OrderStatus.DeliveryFailed)
+            throw new AppException("Đơn đã có người nhận giao hoặc chưa sẵn sàng để giao", 409);
+
+        var retry = order.Status == OrderStatus.DeliveryFailed;
+        var retryText = retry ? $" lại (lần {order.DeliveryAttempts + 1})" : "";
+
+        order.Status = OrderStatus.DeliveryAccepted;
+        order.DeliveryShipperId = shipperId;
+        order.DeliveryAcceptedAt = DateTime.UtcNow;
+        order.UpdatedAt = DateTime.UtcNow;
+
+        _orders.AddHistory(new OrderStatusHistory
+        {
+            OrderId = order.Id,
+            Status = OrderStatus.DeliveryAccepted,
+            Note = $"Shipper {shipper.FullName} đã nhận giao{retryText}, sẽ đến kho lấy hàng",
+            ActorUserId = shipperId,
+        });
+
+        await _orders.SaveAsync();
+        return await LoadDtoAsync(order.Id, canModify: false);
+    }
+
+    // ================= SHIPPER CẬP NHẬT KẾT QUẢ GIAO =================
+
+    private static readonly Dictionary<string, string> FailureReasons = new()
+    {
+        ["no_contact"] = "Không liên lạc được với người nhận",
+        ["refused"] = "Khách từ chối nhận hàng",
+        ["wrong_address"] = "Sai địa chỉ giao hàng",
+    };
+
+    // FR53, FR56: giao thành công, ghi nhận số COD thực thu và ảnh bàn giao (nếu có)
+    public async Task<OrderDto> CompleteDeliveryAsync(
+        Guid shipperId, Guid orderId, decimal? collectedAmount, string? note, List<PhotoUpload> photos)
+    {
+        var order = await _orders.GetTrackedAsync(orderId)
+                    ?? throw new AppException("Không tìm thấy đơn hàng", 404);
+        EnsureMyDelivery(order, shipperId);
+
+        var collected = collectedAmount ?? order.CodAmount;
+        note = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
+
+        // Thu khác số COD của đơn thì bắt buộc ghi lý do
+        if (collected != order.CodAmount && note is null)
+            throw new AppException(
+                $"Số tiền thu ({Vnd(collected)}) khác số COD của đơn ({Vnd(order.CodAmount)}), vui lòng ghi chú lý do", 400);
+
+        order.Status = OrderStatus.Delivered;
+        order.DeliveredAt = DateTime.UtcNow;
+        order.CodCollected = collected;
+        order.UpdatedAt = DateTime.UtcNow;
+
+        var text = order.CodAmount > 0 ? $"Giao thành công. Đã thu COD {Vnd(collected)}" : "Giao thành công (đơn không thu COD)";
+        if (collected != order.CodAmount) text += $" (đơn yêu cầu {Vnd(order.CodAmount)})";
+        if (note is not null) text += $". Ghi chú: {note}";
+        if (photos.Count > 0) text += $". Kèm {photos.Count} ảnh";
+
+        AddHistoryWithPhotos(order, OrderStatus.Delivered, text, shipperId, "delivered", photos);
+        await _orders.SaveAsync();
+        return await LoadDtoAsync(order.Id, canModify: false);
+    }
+
+    // FR54, FR55: giao thất bại kèm lý do. Chưa quá số lần quy định thì giao lại, quá thì chuyển sang chờ hoàn hàng.
+    public async Task<OrderDto> FailDeliveryAsync(
+        Guid shipperId, Guid orderId, string reason, string? note, List<PhotoUpload> photos)
+    {
+        if (!FailureReasons.TryGetValue(reason, out var reasonText))
+            throw new AppException("Lý do giao thất bại không hợp lệ", 400);
+
+        var order = await _orders.GetTrackedAsync(orderId)
+                    ?? throw new AppException("Không tìm thấy đơn hàng", 404);
+        EnsureMyDelivery(order, shipperId);
+
+        note = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
+
+        order.DeliveryAttempts += 1;
+        order.LastFailureReason = reason;
+        order.UpdatedAt = DateTime.UtcNow;
+
+        string text;
+        if (order.DeliveryAttempts >= _maxAttempts)
+        {
+            order.Status = OrderStatus.Returning;
+            text = $"Giao thất bại lần {order.DeliveryAttempts}/{_maxAttempts}: {reasonText}. Đã hết số lần giao lại, đơn chuyển sang chờ hoàn hàng về người bán";
+        }
+        else
+        {
+            order.Status = OrderStatus.DeliveryFailed;
+            text = $"Giao thất bại lần {order.DeliveryAttempts}/{_maxAttempts}: {reasonText}. Đơn sẽ được giao lại";
+        }
+
+        if (note is not null) text += $". Ghi chú: {note}";
+        if (photos.Count > 0) text += $". Kèm {photos.Count} ảnh";
+
+        AddHistoryWithPhotos(order, order.Status, text, shipperId, "failed", photos);
+        await _orders.SaveAsync();
+        return await LoadDtoAsync(order.Id, canModify: false);
+    }
+
+    // Ảnh minh chứng: chỉ người có quyền xem đơn mới xem được ảnh
+    public async Task<(byte[] Data, string ContentType)> GetPhotoAsync(Guid userId, Guid orderId, Guid photoId)
+    {
+        var viewer = await GetUserAsync(userId);
+        var order = await _orders.GetDetailAsync(orderId);
+        if (order is null || !CanView(viewer, order))
+            throw new AppException("Không tìm thấy ảnh", 404);
+
+        var photo = await _orders.GetPhotoAsync(orderId, photoId)
+                    ?? throw new AppException("Không tìm thấy ảnh", 404);
+        return (photo.Data, photo.ContentType);
+    }
+
+    private static void EnsureMyDelivery(Order order, Guid shipperId)
+    {
+        if (order.DeliveryShipperId != shipperId)
+            throw new AppException("Bạn không phải shipper giao đơn này", 403);
+        if (order.Status != OrderStatus.OutForDelivery)
+            throw new AppException("Đơn không ở trạng thái đang giao (kho chưa xuất hàng hoặc đã cập nhật kết quả)", 409);
+    }
+
+    private void AddHistoryWithPhotos(
+        Order order, OrderStatus status, string note, Guid actorId, string kind, List<PhotoUpload> photos)
+    {
+        _orders.AddHistory(new OrderStatusHistory
+        {
+            OrderId = order.Id,
+            Status = status,
+            Note = note,
+            ActorUserId = actorId,
+        });
+
+        foreach (var p in photos)
+        {
+            _orders.AddPhoto(new OrderPhoto
+            {
+                OrderId = order.Id,
+                Kind = kind,
+                ContentType = p.ContentType,
+                Data = p.Data,
+                UploadedById = actorId,
+            });
+        }
+    }
+
+    private async Task<OrderDto> WithPhotosAsync(OrderDto dto)
+    {
+        var photos = await _orders.GetPhotoInfosAsync(dto.Id);
+        dto.Photos = photos.Select(p => new OrderPhotoDto
+        {
+            Id = p.Id,
+            Kind = p.Kind,
+            CreatedAt = p.CreatedAt,
+            UploadedByName = p.UploadedByName,
+        }).ToList();
+        return dto;
+    }
+
+    // 1500000 -> "1.500.000đ" (tự định dạng để không phụ thuộc ngôn ngữ máy chủ)
+    private static string Vnd(decimal v) => v.ToString("#,0", CultureInfo.InvariantCulture).Replace(",", ".") + "đ";
+
     // ================= helpers =================
 
     private async Task<PagedResult<OrderDto>> SearchAsync(OrderFilter filter, int page, int pageSize, bool canModifyForSeller)
@@ -421,7 +692,7 @@ public class OrderService : IOrderService
     {
         var order = await _orders.GetDetailAsync(orderId)
                     ?? throw new AppException("Không tìm thấy đơn hàng", 404);
-        return ToDto(order, canModify, withHistory: true);
+        return await WithPhotosAsync(ToDto(order, canModify, withHistory: true));
     }
 
     private async Task<User> GetUserAsync(Guid userId) =>
@@ -507,11 +778,18 @@ public class OrderService : IOrderService
         UserRole.Admin or UserRole.Dispatcher => true,
         UserRole.Seller => order.SellerId == viewer.Id,
         UserRole.Shipper => order.PickupShipperId == viewer.Id
-                            || (order.Status == OrderStatus.PendingPickup && order.PickupWarehouseId == viewer.WarehouseId),
+                            || order.DeliveryShipperId == viewer.Id
+                            || (order.Status == OrderStatus.PendingPickup && order.PickupWarehouseId == viewer.WarehouseId)
+                            || ((order.Status == OrderStatus.InWarehouse || order.Status == OrderStatus.DeliveryFailed)
+                                && viewer.WarehouseId.HasValue && order.CurrentWarehouseId == viewer.WarehouseId),
         UserRole.Warehouse => viewer.WarehouseId.HasValue
                               && (order.PickupWarehouseId == viewer.WarehouseId || order.CurrentWarehouseId == viewer.WarehouseId),
         _ => false,
     };
+
+    private static bool IsInWarehouse(OrderStatus s) =>
+        s == OrderStatus.InWarehouse || s == OrderStatus.DeliveryAccepted
+        || s == OrderStatus.DeliveryFailed || s == OrderStatus.Returning;
 
     // "pending_pickup" -> OrderStatus.PendingPickup
     private static OrderStatus ParseStatus(string value)
@@ -525,7 +803,7 @@ public class OrderService : IOrderService
     private static string StatusKey(OrderStatus status) =>
         Regex.Replace(status.ToString(), "(?<!^)([A-Z])", "_$1").ToLowerInvariant();
 
-    private static OrderDto ToDto(Order o, bool canModify, bool withHistory) => new()
+    private OrderDto ToDto(Order o, bool canModify, bool withHistory) => new()
     {
         Id = o.Id,
         Code = o.Code,
@@ -560,8 +838,19 @@ public class OrderService : IOrderService
         CreatedAt = o.CreatedAt,
         AcceptedAt = o.AcceptedAt,
         PickedUpAt = o.PickedUpAt,
-        CurrentWarehouseCode = o.CurrentWarehouse?.Code,
-        CurrentWarehouseName = o.CurrentWarehouse?.Name,
+        // "Đang ở kho" chỉ đúng khi hàng còn nằm trong kho (chưa xuất)
+        CurrentWarehouseCode = IsInWarehouse(o.Status) ? o.CurrentWarehouse?.Code : null,
+        CurrentWarehouseName = IsInWarehouse(o.Status) ? o.CurrentWarehouse?.Name : null,
+        DeliveryShipperId = o.DeliveryShipperId,
+        DeliveryShipperName = o.DeliveryShipper?.FullName,
+        DeliveryShipperPhone = o.DeliveryShipper?.Phone,
+        DeliveryAcceptedAt = o.DeliveryAcceptedAt,
+        DispatchedAt = o.DispatchedAt,
+        DeliveryAttempts = o.DeliveryAttempts,
+        MaxDeliveryAttempts = _maxAttempts,
+        DeliveredAt = o.DeliveredAt,
+        CodCollected = o.CodCollected,
+        LastFailureReason = o.LastFailureReason,
         ReceivedAt = o.ReceivedAt,
         ReceivedQuantity = o.ReceivedQuantity,
         CanModify = canModify,

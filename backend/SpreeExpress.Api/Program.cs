@@ -19,7 +19,7 @@ var port = Environment.GetEnvironmentVariable("PORT");
 if (!string.IsNullOrEmpty(port))
     builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
-// ----- Database (PostgreSQL / Supabase) -----
+
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
 if (string.IsNullOrWhiteSpace(connectionString))
@@ -79,8 +79,7 @@ builder.Services
             RoleClaimType = ClaimTypes.Role,
         };
 
-        // Mỗi request kiểm tra lại database: tài khoản bị khóa hoặc đổi vai trò
-        // thì token cũ lập tức hết hiệu lực (frontend sẽ tự đưa về trang đăng nhập).
+        
         options.Events = new JwtBearerEvents
         {
             OnTokenValidated = async ctx =>

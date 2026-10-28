@@ -14,6 +14,10 @@ export const orderApi = {
   // Admin, Điều phối viên: xem mọi đơn
   listAll: (params) => axiosClient.get('/api/orders', { params }).then((r) => r.data),
 
+  // Ảnh minh chứng: cần gửi kèm token nên tải về dạng blob rồi mới hiển thị
+  photoBlob: (orderId, photoId) =>
+    axiosClient.get(`/api/orders/${orderId}/photos/${photoId}`, { responseType: 'blob' }).then((r) => r.data),
+
   // Dùng chung
   get: (id) => axiosClient.get(`/api/orders/${id}`).then((r) => r.data),
   summary: () => axiosClient.get('/api/orders/summary').then((r) => r.data),
@@ -32,4 +36,17 @@ export const warehouseOrderApi = {
   list: (scope, params) =>
     axiosClient.get('/api/warehouse-orders', { params: { scope, ...params } }).then((r) => r.data),
   receive: (data) => axiosClient.post('/api/warehouse-orders/receive', data).then((r) => r.data),
+  // Xuất hàng cho shipper đã nhận giao
+  dispatch: (data) => axiosClient.post('/api/warehouse-orders/dispatch', data).then((r) => r.data),
+};
+
+// Shipper: nhận giao hàng tại kho mình phụ trách
+export const deliveryApi = {
+  available: (params) => axiosClient.get('/api/deliveries/available', { params }).then((r) => r.data),
+  // status: 'accepted' (đã nhận, chờ lấy ở kho) | 'out_for_delivery' (đang đi giao)
+  mine: (params) => axiosClient.get('/api/deliveries/mine', { params }).then((r) => r.data),
+  accept: (id) => axiosClient.post(`/api/deliveries/${id}/accept`).then((r) => r.data),
+  // Kết quả giao: gửi FormData (có thể kèm ảnh)
+  deliver: (id, formData) => axiosClient.post(`/api/deliveries/${id}/delivered`, formData).then((r) => r.data),
+  fail: (id, formData) => axiosClient.post(`/api/deliveries/${id}/failed`, formData).then((r) => r.data),
 };

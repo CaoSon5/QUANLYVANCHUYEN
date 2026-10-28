@@ -41,6 +41,10 @@ namespace SpreeExpress.Api.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<decimal?>("CodCollected")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -56,10 +60,29 @@ namespace SpreeExpress.Api.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<DateTime?>("DeliveredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeliveryAcceptedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DeliveryAttempts")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("DeliveryShipperId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("DispatchedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("ItemDescription")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<string>("LastFailureReason")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
 
                     b.Property<string>("Note")
                         .HasMaxLength(500)
@@ -155,6 +178,8 @@ namespace SpreeExpress.Api.Migrations
                     b.HasIndex("Code")
                         .IsUnique();
 
+                    b.HasIndex("DeliveryShipperId");
+
                     b.HasIndex("PickupShipperId");
 
                     b.HasIndex("SellerId");
@@ -164,6 +189,44 @@ namespace SpreeExpress.Api.Migrations
                     b.HasIndex("PickupWarehouseId", "Status");
 
                     b.ToTable("orders", (string)null);
+                });
+
+            modelBuilder.Entity("SpreeExpress.Api.Entities.OrderPhoto", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte[]>("Data")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("UploadedById")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId");
+
+                    b.HasIndex("UploadedById");
+
+                    b.ToTable("order_photos", (string)null);
                 });
 
             modelBuilder.Entity("SpreeExpress.Api.Entities.OrderStatusHistory", b =>
@@ -307,6 +370,11 @@ namespace SpreeExpress.Api.Migrations
                         .HasForeignKey("CurrentWarehouseId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("SpreeExpress.Api.Entities.User", "DeliveryShipper")
+                        .WithMany()
+                        .HasForeignKey("DeliveryShipperId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("SpreeExpress.Api.Entities.User", "PickupShipper")
                         .WithMany()
                         .HasForeignKey("PickupShipperId")
@@ -326,11 +394,31 @@ namespace SpreeExpress.Api.Migrations
 
                     b.Navigation("CurrentWarehouse");
 
+                    b.Navigation("DeliveryShipper");
+
                     b.Navigation("PickupShipper");
 
                     b.Navigation("PickupWarehouse");
 
                     b.Navigation("Seller");
+                });
+
+            modelBuilder.Entity("SpreeExpress.Api.Entities.OrderPhoto", b =>
+                {
+                    b.HasOne("SpreeExpress.Api.Entities.Order", "Order")
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SpreeExpress.Api.Entities.User", "UploadedBy")
+                        .WithMany()
+                        .HasForeignKey("UploadedById")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Order");
+
+                    b.Navigation("UploadedBy");
                 });
 
             modelBuilder.Entity("SpreeExpress.Api.Entities.OrderStatusHistory", b =>

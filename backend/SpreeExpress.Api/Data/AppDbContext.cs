@@ -1,3 +1,4 @@
+// Đặt vào: D:\spreeexpress_supabase\spreeexpress\backend\SpreeExpress.Api\Data\
 using Microsoft.EntityFrameworkCore;
 using SpreeExpress.Api.Entities;
 
@@ -11,6 +12,7 @@ public class AppDbContext : DbContext
     public DbSet<Warehouse> Warehouses => Set<Warehouse>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderStatusHistory> OrderStatusHistory => Set<OrderStatusHistory>();
+    public DbSet<OrderPhoto> OrderPhotos => Set<OrderPhoto>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

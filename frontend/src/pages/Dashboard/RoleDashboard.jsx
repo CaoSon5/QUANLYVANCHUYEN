@@ -36,15 +36,14 @@ export default function RoleDashboard({ config }) {
     liveValues = [live.total, live.inProgress, live.delivered, formatShortMoney(live.codPending)];
   }
   if (live && role === 'shipper') {
-    // Đơn chờ giao, đang giao, COD: chưa có phần giao hàng nên giữ "—"
-    liveValues = [live.pendingPickup, '—', '—', '—'];
-    liveSubtitle = `Có ${live.pendingPickup} yêu cầu lấy hàng đang chờ tại kho của bạn, bạn đã nhận ${live.acceptedPickup} đơn chưa lấy.`;
+    // COD đã thu: chưa có phần ghi nhận giao hàng nên giữ "—"
+    liveValues = [live.pendingPickup, live.pendingDelivery, live.outForDelivery, formatShortMoney(live.codCollected)];
+    liveSubtitle = `Có ${live.pendingPickup} yêu cầu lấy hàng và ${live.pendingDelivery} đơn chờ giao tại kho của bạn, ${live.outForDelivery} đơn đang giao.`;
   }
 
   if (live && role === 'warehouse') {
-    // Đã xuất hôm nay: chưa có phần xuất kho nên giữ "—"
-    liveValues = [live.receivedToday, '—', live.inventory, live.stale48h];
-    liveSubtitle = `Có ${live.incoming} đơn đang trên đường về kho, ${live.inventory} đơn đang lưu trong kho.`;
+    liveValues = [live.receivedToday, live.dispatchedToday, live.inventory, live.stale48h];
+    liveSubtitle = `Có ${live.incoming} đơn đang về kho, ${live.awaitingDispatch} đơn chờ xuất cho shipper, ${live.inventory} đơn đang lưu trong kho.`;
   }
 
   return (
