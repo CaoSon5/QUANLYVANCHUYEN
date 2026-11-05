@@ -1,5 +1,6 @@
+// Đặt vào: D:\spreeexpress_supabase\spreeexpress\frontend\src\pages\Orders\
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import PageHeader from '../../components/common/PageHeader';
 import StatCard from '../../components/common/StatCard';
@@ -23,11 +24,18 @@ export default function AdminOrdersList() {
   const [total, setTotal] = useState(0);
   const [summary, setSummary] = useState({ total: 0, inProgress: 0, delivered: 0 });
   const [page, setPage] = useState(1);
-  const [search, setSearch] = useState('');
+  const [searchParams] = useSearchParams();
+  const urlSearch = searchParams.get('search') ?? '';
+  const [search, setSearch] = useState(urlSearch);
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Ô tra cứu ở đầu trang đổi từ khóa trên địa chỉ thì cập nhật theo
+  useEffect(() => {
+    setSearch(urlSearch);
+  }, [urlSearch]);
 
   useEffect(() => {
     const t = setTimeout(() => {

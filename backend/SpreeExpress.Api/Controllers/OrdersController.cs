@@ -59,6 +59,22 @@ public class OrdersController : ControllerBase
     public async Task<ActionResult<OrderDto>> Cancel(Guid id, CancelOrderRequest request) =>
         Ok(await _orders.CancelAsync(UserId, id, request.Reason));
 
+    // FR09: đơn đang nằm trong một kho (xem chi tiết kho)
+    [Authorize(Roles = "Admin,Dispatcher")]
+    [HttpGet("by-warehouse/{warehouseId:guid}")]
+    public async Task<ActionResult<PagedResult<OrderDto>>> ByWarehouse(
+        Guid warehouseId,
+        [FromQuery] string? search,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10) =>
+        Ok(await _orders.ListWarehouseStockAsync(warehouseId, search, page, pageSize));
+
+    // FR68: xác nhận đã nhận lại hàng hoàn
+    [Authorize(Roles = "Seller")]
+    [HttpPost("{id:guid}/confirm-return")]
+    public async Task<ActionResult<OrderDto>> ConfirmReturn(Guid id) =>
+        Ok(await _orders.ConfirmReturnReceivedAsync(UserId, id));
+
     // ----- Admin, Điều phối viên: xem mọi đơn -----
 
     [Authorize(Roles = "Admin,Dispatcher")]

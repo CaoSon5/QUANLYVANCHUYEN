@@ -75,6 +75,8 @@ export default function OrderDetailView({ order: o }) {
             <Info label="Xuất kho lúc">{o.dispatchedAt ? formatDateTime(o.dispatchedAt) : null}</Info>
             <Info label="Giao thành công lúc">{o.deliveredAt ? formatDateTime(o.deliveredAt) : null}</Info>
             <Info label="COD đã thu">{o.codCollected != null ? formatVnd(o.codCollected) : null}</Info>
+            <Info label="Kho bàn giao hàng hoàn lúc">{o.returnedAt ? formatDateTime(o.returnedAt) : null}</Info>
+            <Info label="Người bán nhận lại lúc">{o.returnConfirmedAt ? formatDateTime(o.returnConfirmedAt) : null}</Info>
             {o.deliveryAttempts > 0 && (
               <Info label="Giao thất bại" full>
                 {`${o.deliveryAttempts}/${o.maxDeliveryAttempts} lần · lần gần nhất: ${FAILURE_REASONS[o.lastFailureReason] ?? 'không rõ lý do'}`}

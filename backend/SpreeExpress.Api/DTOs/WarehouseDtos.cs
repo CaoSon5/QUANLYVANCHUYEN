@@ -1,4 +1,4 @@
-// Đặt vào: D:\spreeexpress\backend\SpreeExpress.Api\DTOs\
+// Đặt vào: D:\spreeexpress_supabase\spreeexpress\backend\SpreeExpress.Api\DTOs\
 using System.ComponentModel.DataAnnotations;
 
 namespace SpreeExpress.Api.DTOs;
@@ -44,8 +44,12 @@ public class WarehouseDetailDto
     public List<WarehouseMemberDto> Shippers { get; set; } = new();
     public List<WarehouseChildDto> Children { get; set; } = new();
 
-    // Tồn kho hiện tại: sẽ có số thật khi làm module đơn hàng
+    // Tồn kho hiện tại (FR09): số đơn đang nằm trong kho, tính từ dữ liệu đơn hàng
     public int StockCount { get; set; }
+    public int Incoming { get; set; }          // đang trên đường về kho (shipper đã lấy hàng)
+    public int AwaitingDispatch { get; set; }  // shipper đã nhận giao, chờ kho xuất hàng
+    public int Stale48h { get; set; }          // lưu quá 48 giờ
+    public int ReturnsPending { get; set; }    // hàng hoàn chờ bàn giao cho người bán
 }
 
 public class WarehouseSummaryDto

@@ -1,3 +1,4 @@
+// Đặt vào: D:\spreeexpress_supabase\spreeexpress\frontend\src\pages\Login\
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
@@ -84,6 +85,9 @@ export default function LoginPage() {
 
         <p className="auth-switch">
           Bạn là người bán mới? <Link to="/register">Đăng ký tài khoản</Link>
+        </p>
+        <p className="auth-switch">
+          Bạn đang chờ nhận hàng? <Link to="/tra-cuu">Tra cứu đơn hàng</Link>
         </p>
       </form>
     </AuthLayout>

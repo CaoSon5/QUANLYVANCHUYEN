@@ -24,6 +24,67 @@ namespace SpreeExpress.Api.Migrations
 
             modelBuilder.HasSequence("order_code_seq");
 
+            modelBuilder.HasSequence("remittance_code_seq");
+
+            modelBuilder.HasSequence("settlement_code_seq");
+
+            modelBuilder.Entity("SpreeExpress.Api.Entities.CodRemittance", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("ConfirmNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("ConfirmedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ConfirmedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("OrderCount")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal?>("ReceivedAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid>("ShipperId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("ConfirmedById");
+
+                    b.HasIndex("ShipperId");
+
+                    b.HasIndex("Status", "CreatedAt");
+
+                    b.ToTable("cod_remittances", (string)null);
+                });
+
             modelBuilder.Entity("SpreeExpress.Api.Entities.Order", b =>
                 {
                     b.Property<Guid>("Id")
@@ -44,6 +105,10 @@ namespace SpreeExpress.Api.Migrations
                     b.Property<decimal?>("CodCollected")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid?>("CodRemittanceId")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Code")
                         .IsRequired()
@@ -138,6 +203,12 @@ namespace SpreeExpress.Api.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<DateTime?>("ReturnConfirmedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ReturnedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid>("SellerId")
                         .HasColumnType("uuid");
 
@@ -155,6 +226,10 @@ namespace SpreeExpress.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
+
+                    b.Property<Guid?>("SettlementId")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
 
                     b.Property<decimal>("ShippingFee")
                         .HasPrecision(18, 2)
@@ -175,6 +250,8 @@ namespace SpreeExpress.Api.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CodRemittanceId");
+
                     b.HasIndex("Code")
                         .IsUnique();
 
@@ -183,6 +260,8 @@ namespace SpreeExpress.Api.Migrations
                     b.HasIndex("PickupShipperId");
 
                     b.HasIndex("SellerId");
+
+                    b.HasIndex("SettlementId");
 
                     b.HasIndex("CurrentWarehouseId", "Status");
 
@@ -260,6 +339,111 @@ namespace SpreeExpress.Api.Migrations
                     b.HasIndex("OrderId");
 
                     b.ToTable("order_status_history", (string)null);
+                });
+
+            modelBuilder.Entity("SpreeExpress.Api.Entities.Settlement", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("GrossCod")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("NetAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("OrderCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("PaidAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("PaidById")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PaymentRef")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateOnly>("PeriodFrom")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly>("PeriodTo")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("SellerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<decimal>("TotalAdjustments")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("TotalShippingFee")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("CreatedById");
+
+                    b.HasIndex("PaidById");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("SellerId", "CreatedAt");
+
+                    b.ToTable("settlements", (string)null);
+                });
+
+            modelBuilder.Entity("SpreeExpress.Api.Entities.SettlementAdjustment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("SettlementId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SettlementId");
+
+                    b.ToTable("settlement_adjustments", (string)null);
                 });
 
             modelBuilder.Entity("SpreeExpress.Api.Entities.User", b =>
@@ -363,8 +547,31 @@ namespace SpreeExpress.Api.Migrations
                     b.ToTable("warehouses", (string)null);
                 });
 
+            modelBuilder.Entity("SpreeExpress.Api.Entities.CodRemittance", b =>
+                {
+                    b.HasOne("SpreeExpress.Api.Entities.User", "ConfirmedBy")
+                        .WithMany()
+                        .HasForeignKey("ConfirmedById")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("SpreeExpress.Api.Entities.User", "Shipper")
+                        .WithMany()
+                        .HasForeignKey("ShipperId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ConfirmedBy");
+
+                    b.Navigation("Shipper");
+                });
+
             modelBuilder.Entity("SpreeExpress.Api.Entities.Order", b =>
                 {
+                    b.HasOne("SpreeExpress.Api.Entities.CodRemittance", "CodRemittance")
+                        .WithMany("Orders")
+                        .HasForeignKey("CodRemittanceId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("SpreeExpress.Api.Entities.Warehouse", "CurrentWarehouse")
                         .WithMany()
                         .HasForeignKey("CurrentWarehouseId")
@@ -392,6 +599,13 @@ namespace SpreeExpress.Api.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("SpreeExpress.Api.Entities.Settlement", "Settlement")
+                        .WithMany("Orders")
+                        .HasForeignKey("SettlementId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CodRemittance");
+
                     b.Navigation("CurrentWarehouse");
 
                     b.Navigation("DeliveryShipper");
@@ -401,6 +615,8 @@ namespace SpreeExpress.Api.Migrations
                     b.Navigation("PickupWarehouse");
 
                     b.Navigation("Seller");
+
+                    b.Navigation("Settlement");
                 });
 
             modelBuilder.Entity("SpreeExpress.Api.Entities.OrderPhoto", b =>
@@ -439,6 +655,42 @@ namespace SpreeExpress.Api.Migrations
                     b.Navigation("Order");
                 });
 
+            modelBuilder.Entity("SpreeExpress.Api.Entities.Settlement", b =>
+                {
+                    b.HasOne("SpreeExpress.Api.Entities.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedById")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("SpreeExpress.Api.Entities.User", "PaidBy")
+                        .WithMany()
+                        .HasForeignKey("PaidById")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("SpreeExpress.Api.Entities.User", "Seller")
+                        .WithMany()
+                        .HasForeignKey("SellerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CreatedBy");
+
+                    b.Navigation("PaidBy");
+
+                    b.Navigation("Seller");
+                });
+
+            modelBuilder.Entity("SpreeExpress.Api.Entities.SettlementAdjustment", b =>
+                {
+                    b.HasOne("SpreeExpress.Api.Entities.Settlement", "Settlement")
+                        .WithMany("Adjustments")
+                        .HasForeignKey("SettlementId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Settlement");
+                });
+
             modelBuilder.Entity("SpreeExpress.Api.Entities.User", b =>
                 {
                     b.HasOne("SpreeExpress.Api.Entities.Warehouse", "Warehouse")
@@ -459,9 +711,21 @@ namespace SpreeExpress.Api.Migrations
                     b.Navigation("Parent");
                 });
 
+            modelBuilder.Entity("SpreeExpress.Api.Entities.CodRemittance", b =>
+                {
+                    b.Navigation("Orders");
+                });
+
             modelBuilder.Entity("SpreeExpress.Api.Entities.Order", b =>
                 {
                     b.Navigation("History");
+                });
+
+            modelBuilder.Entity("SpreeExpress.Api.Entities.Settlement", b =>
+                {
+                    b.Navigation("Adjustments");
+
+                    b.Navigation("Orders");
                 });
 
             modelBuilder.Entity("SpreeExpress.Api.Entities.Warehouse", b =>

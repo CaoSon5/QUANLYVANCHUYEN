@@ -1,3 +1,4 @@
+// Đặt vào: D:\spreeexpress_supabase\spreeexpress\frontend\src\pages\Warehouses\
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
@@ -8,6 +9,7 @@ import { TYPE_LABEL } from '../../config/warehouse';
 import StatCard from '../../components/common/StatCard';
 import WarehouseFormModal from './WarehouseFormModal';
 import AssignMemberModal from './AssignMemberModal';
+import WarehouseStock from './WarehouseStock';
 import '../Accounts/accounts.css';
 import './warehouses.css';
 
@@ -149,6 +151,13 @@ export default function WarehouseDetail({ id }) {
         <StatCard index={2} label={isLocal ? 'Shipper phụ trách' : 'Kho địa phương trực thuộc'} value={isLocal ? w.shipperCount : data.children.length} showTrend={false} />
       </div>
 
+      <div className="grid grid-4 section">
+        <StatCard index={0} label="Đang trên đường về kho" value={data.incoming} showTrend={false} />
+        <StatCard index={1} label="Chờ xuất cho shipper" value={data.awaitingDispatch} showTrend={false} />
+        <StatCard index={2} label="Lưu quá 48 giờ" value={data.stale48h} showTrend={false} />
+        <StatCard index={3} label="Hàng hoàn chờ trả" value={data.returnsPending} showTrend={false} />
+      </div>
+
       <div className="member-grid section">
         <MemberPanel
           title="Nhân viên kho"
@@ -191,11 +200,7 @@ export default function WarehouseDetail({ id }) {
         )}
       </div>
 
-      <div className="card section">
-        <div className="card-title">Tồn kho</div>
-        <div className="card-sub">Danh sách đơn hàng và bao hàng đang lưu tại kho</div>
-        <div className="placeholder">Sẽ hiển thị khi hoàn thiện module đơn hàng</div>
-      </div>
+      <WarehouseStock warehouseId={w.id} />
 
       {modal === 'edit' && <WarehouseFormModal mode="edit" warehouse={w} onClose={closeModal} onSaved={handleSaved} />}
       {modal === 'staff' && <AssignMemberModal warehouse={w} role="warehouse" onClose={closeModal} onSaved={handleSaved} />}

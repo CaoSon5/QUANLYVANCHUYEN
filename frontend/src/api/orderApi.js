@@ -17,6 +17,12 @@ export const orderApi = {
   // Ảnh minh chứng: cần gửi kèm token nên tải về dạng blob rồi mới hiển thị
   photoBlob: (orderId, photoId) =>
     axiosClient.get(`/api/orders/${orderId}/photos/${photoId}`, { responseType: 'blob' }).then((r) => r.data),
+  // Admin, Điều phối viên: các đơn đang nằm trong một kho (FR09)
+  listByWarehouse: (warehouseId, params) =>
+    axiosClient.get(`/api/orders/by-warehouse/${warehouseId}`, { params }).then((r) => r.data),
+
+  // Người bán xác nhận đã nhận lại hàng hoàn (FR68)
+  confirmReturn: (id) => axiosClient.post(`/api/orders/${id}/confirm-return`).then((r) => r.data),
 
   // Dùng chung
   get: (id) => axiosClient.get(`/api/orders/${id}`).then((r) => r.data),
@@ -38,6 +44,8 @@ export const warehouseOrderApi = {
   receive: (data) => axiosClient.post('/api/warehouse-orders/receive', data).then((r) => r.data),
   // Xuất hàng cho shipper đã nhận giao
   dispatch: (data) => axiosClient.post('/api/warehouse-orders/dispatch', data).then((r) => r.data),
+  // Bàn giao hàng hoàn cho người bán (FR68)
+  handOverReturn: (data) => axiosClient.post('/api/warehouse-orders/return-handover', data).then((r) => r.data),
 };
 
 // Shipper: nhận giao hàng tại kho mình phụ trách

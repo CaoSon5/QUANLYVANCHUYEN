@@ -1,0 +1,22 @@
+/* Đặt vào: D:\spreeexpress_supabase\spreeexpress\frontend\src\pages\Reports\ */
+.rev-wrap { position: relative; margin: 18px 0 34px; }
+.rev-bars { display: flex; align-items: flex-end; gap: 3px; padding-top: 12px; border-bottom: 1px solid var(--border); }
+.rev-col { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; position: relative; }
+.rev-bar { width: 100%; max-width: 40px; background: var(--primary); border-radius: 6px 6px 0 0; transition: opacity 0.15s; }
+.rev-col:hover .rev-bar { opacity: 0.75; }
+.rev-label { position: absolute; bottom: -24px; font-size: 11px; color: var(--muted); white-space: nowrap; }
+.rev-empty { position: absolute; inset: 0 0 0 0; display: grid; place-items: center; color: var(--muted); font-size: 14px; pointer-events: none; }
+.report-controls { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+.report-controls label { display: block; font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 6px; }
+.report-note { color: var(--muted); font-size: 13px; line-height: 1.6; margin-top: 14px; }
+.total-row td { font-weight: 800; border-top: 2px solid var(--border); background: #f8fafc; }
+
+/* Báo cáo vận hành */
+.hbar { height: 10px; min-width: 120px; background: #eef2f7; border-radius: 6px; overflow: hidden; }
+.hbar > span { display: block; height: 100%; background: var(--primary); border-radius: 6px; }
+.sub-title { font-weight: 800; font-size: 15px; margin: 26px 0 4px; }
+.rate-good { color: #15803d; font-weight: 700; }
+.rate-mid { color: #b45309; font-weight: 700; }
+.rate-bad { color: #b91c1c; font-weight: 700; }
+.preset-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; }
+.report-tabs { display: flex; gap: 8px; flex-wrap: wrap; }

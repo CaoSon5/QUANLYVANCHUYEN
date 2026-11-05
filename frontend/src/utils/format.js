@@ -1,3 +1,4 @@
+// Đặt vào: D:\spreeexpress_supabase\spreeexpress\frontend\src\utils\
 // 32000 -> "32.000đ"
 export function formatVnd(value) {
   const n = Number(value) || 0;
@@ -16,4 +17,11 @@ export function formatDateTime(value) {
   return new Date(value).toLocaleString('vi-VN', {
     hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric',
   });
+}
+
+// "2026-10-31" -> "31/10/2026" (ngày không kèm giờ, ví dụ kỳ đối soát)
+export function formatDateOnly(value) {
+  if (!value) return '—';
+  const [y, m, d] = String(value).slice(0, 10).split('-');
+  return `${d}/${m}/${y}`;
 }

@@ -40,6 +40,18 @@ public class OrderRepository : IOrderRepository
     public Task<Order?> GetByCodeAsync(string code) =>
         DetailQuery().FirstOrDefaultAsync(o => o.Code == code);
 
+    // Số điện thoại có thể được lưu dạng 0xxxxxxxxx hoặc +84xxxxxxxxx nên tìm cả hai
+    public Task<List<Order>> FindByReceiverPhoneAsync(string localPhone, int take)
+    {
+        var international = "+84" + localPhone.Substring(1);
+        return _db.Orders.AsNoTracking()
+            .Include(o => o.Seller)
+            .Where(o => o.ReceiverPhone == localPhone || o.ReceiverPhone == international)
+            .OrderByDescending(o => o.CreatedAt)
+            .Take(take)
+            .ToListAsync();
+    }
+
     public async Task<(List<Order> Items, int Total)> SearchAsync(OrderFilter f)
     {
         IQueryable<Order> query = _db.Orders.AsNoTracking()
@@ -122,7 +134,13 @@ public class OrderRepository : IOrderRepository
                 o.Status != OrderStatus.Delivered &&
                 o.Status != OrderStatus.Returned),
             Delivered = await mine.CountAsync(o => o.Status == OrderStatus.Delivered),
-            CodPending = await mine.Where(o => o.Status == OrderStatus.Delivered).SumAsync(o => o.CodCollected ?? o.CodAmount),
+            ReturnsToConfirm = await mine.CountAsync(o =>
+                o.Status == OrderStatus.Returned && o.ReturnConfirmedAt == null),
+            // COD chờ nhận: đã giao nhưng bảng đối soát chưa được chuyển tiền
+            CodPending = await mine
+                .Where(o => o.Status == OrderStatus.Delivered
+                            && !(o.Settlement != null && o.Settlement.Status == SettlementStatus.Paid))
+                .SumAsync(o => o.CodCollected ?? o.CodAmount),
         };
     }
 
@@ -172,6 +190,8 @@ public class OrderRepository : IOrderRepository
                 o.CurrentWarehouseId == warehouseId && o.Status == OrderStatus.DeliveryAccepted),
             DispatchedToday = await _db.Orders.CountAsync(o =>
                 o.CurrentWarehouseId == warehouseId && o.DispatchedAt >= startOfTodayUtc),
+            ReturnsPending = await _db.Orders.CountAsync(o =>
+                o.CurrentWarehouseId == warehouseId && o.Status == OrderStatus.Returning),
         };
     }
 

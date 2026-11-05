@@ -44,6 +44,12 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
         b.HasIndex(x => x.PickupShipperId);
         b.HasIndex(x => new { x.CurrentWarehouseId, x.Status });
         b.HasIndex(x => x.DeliveryShipperId);
+        b.HasIndex(x => x.CodRemittanceId);
+        b.HasIndex(x => x.SettlementId);
+
+        // Hai cột này là "concurrency token": một đơn không thể bị đưa vào 2 phiếu nộp / 2 bảng đối soát cùng lúc
+        b.Property(x => x.CodRemittanceId).IsConcurrencyToken();
+        b.Property(x => x.SettlementId).IsConcurrencyToken();
 
         b.HasOne(x => x.Seller).WithMany().HasForeignKey(x => x.SellerId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne(x => x.PickupWarehouse).WithMany().HasForeignKey(x => x.PickupWarehouseId).OnDelete(DeleteBehavior.Restrict);

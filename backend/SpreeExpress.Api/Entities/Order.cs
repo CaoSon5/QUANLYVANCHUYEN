@@ -63,6 +63,16 @@ public class Order
     public decimal? CodCollected { get; set; }            // số tiền COD shipper thực thu
     public string? LastFailureReason { get; set; }        // no_contact | refused | wrong_address
 
+    // Đối soát tiền COD: phiếu nộp của shipper và bảng đối soát của người bán
+    public Guid? CodRemittanceId { get; set; }
+    public CodRemittance? CodRemittance { get; set; }
+    public Guid? SettlementId { get; set; }
+    public Settlement? Settlement { get; set; }
+
+    // Hoàn hàng về người bán (FR68)
+    public DateTime? ReturnedAt { get; set; }          // kho bàn giao hàng hoàn
+    public DateTime? ReturnConfirmedAt { get; set; }   // người bán xác nhận đã nhận lại hàng
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

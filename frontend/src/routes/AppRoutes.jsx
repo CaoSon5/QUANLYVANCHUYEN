@@ -1,3 +1,4 @@
+// Đặt vào: D:\spreeexpress_supabase\spreeexpress\frontend\src\routes\
 import { Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ROLES } from '../config/roles';
@@ -7,6 +8,7 @@ import RegisterPage from '../pages/Register/RegisterPage';
 import SetupPage from '../pages/Setup/SetupPage';
 import ChangePasswordPage from '../pages/ChangePassword/ChangePasswordPage';
 import RolePage from '../pages/RolePage';
+import PublicTrackingPage from '../pages/Tracking/PublicTrackingPage';
 
 // Chỉ cho vào khi đã đăng nhập và đúng role trên URL
 function RequireAuth({ children }) {
@@ -27,6 +29,10 @@ export default function AppRoutes() {
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/setup" element={<SetupPage />} />
       <Route path="/change-password" element={<ChangePasswordPage />} />
+
+      {/* Trang công khai cho khách nhận hàng, không cần đăng nhập (FR69) */}
+      <Route path="/tra-cuu" element={<PublicTrackingPage />} />
+      <Route path="/tra-cuu/:code" element={<PublicTrackingPage />} />
 
       <Route path="/:role" element={<RequireAuth><MainLayout /></RequireAuth>}>
         <Route index element={<Navigate to="dashboard" replace />} />

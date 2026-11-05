@@ -166,6 +166,7 @@ public class OrderService : IOrderService
                 InProgress = c.InProgress,
                 Delivered = c.Delivered,
                 CodPending = c.CodPending,
+                ReturnsPending = c.ReturnsToConfirm,
             };
         }
 
@@ -199,6 +200,7 @@ public class OrderService : IOrderService
                 Stale48h = c.Stale,
                 AwaitingDispatch = c.AwaitingDispatch,
                 DispatchedToday = c.DispatchedToday,
+                ReturnsPending = c.ReturnsPending,
             };
         }
 
@@ -351,6 +353,12 @@ public class OrderService : IOrderService
             // Shipper đã nhận giao, đang chờ kho xuất hàng
             filter.CurrentWarehouseId = staff.WarehouseId;
             filter.Statuses = new List<OrderStatus> { OrderStatus.DeliveryAccepted };
+        }
+        else if (scope == "returns")
+        {
+            // Hết số lần giao lại, chờ kho bàn giao hàng hoàn cho người bán
+            filter.CurrentWarehouseId = staff.WarehouseId;
+            filter.Statuses = new List<OrderStatus> { OrderStatus.Returning };
         }
         else
         {
@@ -526,6 +534,184 @@ public class OrderService : IOrderService
             Status = OrderStatus.DeliveryAccepted,
             Note = $"Shipper {shipper.FullName} đã nhận giao{retryText}, sẽ đến kho lấy hàng",
             ActorUserId = shipperId,
+        });
+
+        await _orders.SaveAsync();
+        return await LoadDtoAsync(order.Id, canModify: false);
+    }
+
+    // ================= TRA CỨU CÔNG KHAI (FR69) =================
+
+    public async Task<PublicTrackingDto> GetPublicTrackingAsync(string code)
+    {
+        var normalized = (code ?? string.Empty).Trim().ToUpperInvariant();
+        if (!PublicMask.LooksLikeOrderCode(normalized))
+            throw new AppException("Mã vận đơn không hợp lệ", 400);
+
+        var order = await _orders.GetByCodeAsync(normalized)
+                    ?? throw new AppException("Không tìm thấy đơn hàng với mã này", 404);
+
+        // Chỉ lấy các mốc trạng thái, bỏ ghi chú và tên người thao tác (là thông tin nội bộ)
+        var events = new List<PublicTrackingEventDto>();
+        OrderStatus? previous = null;
+        foreach (var h in order.History.OrderBy(x => x.CreatedAt))
+        {
+            if (previous == h.Status) continue; // bỏ mốc trùng liền kề (ví dụ người bán xác nhận nhận hàng hoàn)
+            previous = h.Status;
+            events.Add(new PublicTrackingEventDto
+            {
+                Status = StatusKey(h.Status),
+                Text = PublicStatusText(h.Status),
+                At = h.CreatedAt,
+            });
+        }
+
+        return new PublicTrackingDto
+        {
+            Code = order.Code,
+            Status = StatusKey(order.Status),
+            StatusText = PublicStatusText(order.Status),
+            IsFinal = order.Status is OrderStatus.Delivered or OrderStatus.Returned or OrderStatus.Cancelled,
+            SenderName = PublicMask.MaskName(order.Seller?.FullName, keepLastWord: false),
+            ReceiverName = PublicMask.MaskName(order.ReceiverName, keepLastWord: true),
+            ReceiverPhone = PublicMask.MaskPhone(order.ReceiverPhone),
+            ReceiverArea = $"{order.ReceiverDistrict}, {order.ReceiverProvince}",
+            CodAmount = order.CodAmount,
+            CurrentLocation = IsInWarehouse(order.Status) ? order.CurrentWarehouse?.Name : null,
+            FailedAttempts = order.DeliveryAttempts,
+            CreatedAt = order.CreatedAt,
+            UpdatedAt = order.UpdatedAt,
+            Events = events,
+        };
+    }
+
+    // Tra cứu theo số điện thoại người nhận: chỉ trả danh sách rút gọn (tối đa 10 đơn mới nhất)
+    public async Task<List<PublicTrackingSummaryDto>> FindPublicByPhoneAsync(string phone)
+    {
+        var local = PublicMask.NormalizePhone(phone)
+                    ?? throw new AppException("Số điện thoại không hợp lệ", 400);
+
+        var orders = await _orders.FindByReceiverPhoneAsync(local, 10);
+        return orders.Select(o => new PublicTrackingSummaryDto
+        {
+            Code = o.Code,
+            Status = StatusKey(o.Status),
+            StatusText = PublicStatusText(o.Status),
+            SenderName = PublicMask.MaskName(o.Seller?.FullName, keepLastWord: false),
+            UpdatedAt = o.UpdatedAt,
+        }).ToList();
+    }
+
+    // Câu mô tả trạng thái dành cho khách nhận hàng (khác với nhãn nội bộ của nhân viên)
+    private static string PublicStatusText(OrderStatus status) => status switch
+    {
+        OrderStatus.PendingPickup => "Đơn hàng đã được tạo, đang chờ shipper đến lấy hàng",
+        OrderStatus.PickupAccepted => "Shipper đã nhận đơn và sắp đến lấy hàng",
+        OrderStatus.PickedUp => "Đã lấy hàng từ người gửi",
+        OrderStatus.InWarehouse => "Hàng đã về kho",
+        OrderStatus.DeliveryAccepted => "Đơn đã được phân cho shipper giao",
+        OrderStatus.InTransit => "Hàng đang được vận chuyển giữa các kho",
+        OrderStatus.OutForDelivery => "Shipper đang giao hàng đến bạn",
+        OrderStatus.Delivered => "Giao hàng thành công",
+        OrderStatus.DeliveryFailed => "Giao chưa thành công, đơn sẽ được giao lại",
+        OrderStatus.Returning => "Giao không thành công nhiều lần, đơn đang chờ hoàn về người gửi",
+        OrderStatus.Returned => "Đơn đã được hoàn về người gửi",
+        OrderStatus.Cancelled => "Đơn hàng đã bị hủy",
+        _ => "Đang xử lý",
+    };
+
+    // FR09: các đơn đang nằm trong một kho (đã nhập kho, chờ xuất, chờ giao lại, chờ hoàn)
+    public async Task<PagedResult<OrderDto>> ListWarehouseStockAsync(
+        Guid warehouseId, string? search, int page, int pageSize)
+    {
+        var filter = new OrderFilter
+        {
+            CurrentWarehouseId = warehouseId,
+            Statuses = new List<OrderStatus>
+            {
+                OrderStatus.InWarehouse, OrderStatus.DeliveryAccepted, OrderStatus.DeliveryFailed, OrderStatus.Returning,
+            },
+            Search = search?.Trim(),
+            OldestFirst = true,
+        };
+        return await SearchAsync(filter, page, pageSize, canModifyForSeller: false);
+    }
+
+    // ================= HOÀN HÀNG VỀ NGƯỜI BÁN (FR68) =================
+
+    // Kho bàn giao hàng hoàn cho người bán. Hàng rời kho, đơn chuyển sang "Đã hoàn hàng".
+    // Việc ai mang hàng trả (người bán tự đến lấy hay shipper mang đi) do kho sắp xếp, hệ thống ghi nhận người nhận thực tế.
+    public async Task<OrderDto> HandOverReturnAsync(Guid staffId, HandOverReturnRequest request)
+    {
+        var staff = await GetWarehouseStaffAsync(staffId);
+
+        var code = request.Code.Trim().ToUpperInvariant();
+        var order = await _orders.GetTrackedByCodeAsync(code)
+                    ?? throw new AppException($"Không tìm thấy đơn hàng {code}", 404);
+
+        if (order.CurrentWarehouseId != staff.WarehouseId)
+            throw new AppException($"Đơn {code} không nằm trong kho của bạn", 403);
+
+        if (order.Status != OrderStatus.Returning)
+        {
+            var reason = order.Status switch
+            {
+                OrderStatus.Returned => "đã được bàn giao hàng hoàn trước đó",
+                OrderStatus.DeliveryFailed => "vẫn còn lượt giao lại, chưa đến lúc hoàn hàng",
+                OrderStatus.Delivered => "đã giao thành công",
+                OrderStatus.Cancelled => "đã bị hủy",
+                _ => "không ở trạng thái chờ hoàn hàng",
+            };
+            throw new AppException($"Không bàn giao được: đơn {code} {reason}", 409);
+        }
+
+        var receiver = string.IsNullOrWhiteSpace(request.ReceiverName) ? null : request.ReceiverName.Trim();
+        var note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim();
+
+        order.Status = OrderStatus.Returned;
+        order.ReturnedAt = DateTime.UtcNow;
+        order.UpdatedAt = DateTime.UtcNow;
+
+        var text = $"Kho {order.CurrentWarehouse?.Code} đã bàn giao hàng hoàn cho {receiver ?? "người bán"}";
+        if (note is not null) text += $". Ghi chú: {note}";
+
+        _orders.AddHistory(new OrderStatusHistory
+        {
+            OrderId = order.Id,
+            Status = OrderStatus.Returned,
+            Note = text,
+            ActorUserId = staffId,
+        });
+
+        await _orders.SaveAsync();
+        return await LoadDtoAsync(order.Id, canModify: false);
+    }
+
+    // Người bán xác nhận đã nhận lại hàng hoàn. Bấm lại lần nữa không gây lỗi.
+    public async Task<OrderDto> ConfirmReturnReceivedAsync(Guid sellerId, Guid orderId)
+    {
+        var order = await _orders.GetTrackedAsync(orderId)
+                    ?? throw new AppException("Không tìm thấy đơn hàng", 404);
+
+        // Không tiết lộ đơn của người bán khác
+        if (order.SellerId != sellerId)
+            throw new AppException("Không tìm thấy đơn hàng", 404);
+
+        if (order.Status != OrderStatus.Returned)
+            throw new AppException("Đơn này chưa được kho bàn giao hàng hoàn", 409);
+
+        if (order.ReturnConfirmedAt.HasValue)
+            return await LoadDtoAsync(order.Id, canModify: false);
+
+        order.ReturnConfirmedAt = DateTime.UtcNow;
+        order.UpdatedAt = DateTime.UtcNow;
+
+        _orders.AddHistory(new OrderStatusHistory
+        {
+            OrderId = order.Id,
+            Status = OrderStatus.Returned,
+            Note = "Người bán đã xác nhận nhận lại hàng hoàn",
+            ActorUserId = sellerId,
         });
 
         await _orders.SaveAsync();
@@ -836,6 +1022,7 @@ public class OrderService : IOrderService
         PickupNote = o.PickupNote,
         CancelReason = o.CancelReason,
         CreatedAt = o.CreatedAt,
+        UpdatedAt = o.UpdatedAt,
         AcceptedAt = o.AcceptedAt,
         PickedUpAt = o.PickedUpAt,
         // "Đang ở kho" chỉ đúng khi hàng còn nằm trong kho (chưa xuất)
@@ -851,6 +1038,8 @@ public class OrderService : IOrderService
         DeliveredAt = o.DeliveredAt,
         CodCollected = o.CodCollected,
         LastFailureReason = o.LastFailureReason,
+        ReturnedAt = o.ReturnedAt,
+        ReturnConfirmedAt = o.ReturnConfirmedAt,
         ReceivedAt = o.ReceivedAt,
         ReceivedQuantity = o.ReceivedQuantity,
         CanModify = canModify,

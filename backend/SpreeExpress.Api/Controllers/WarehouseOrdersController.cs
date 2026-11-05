@@ -1,4 +1,4 @@
-
+// Đặt vào: D:\spreeexpress_supabase\spreeexpress\backend\SpreeExpress.Api\Controllers\
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,7 +19,7 @@ public class WarehouseOrdersController : ControllerBase
 
     private Guid UserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-    // scope = incoming (đang trên đường về kho) | inventory (đang lưu trong kho) | dispatch (chờ xuất cho shipper)
+    // scope = incoming (đang trên đường về kho) | inventory (đang lưu trong kho) | dispatch (chờ xuất cho shipper) | returns (hàng hoàn chờ trả người bán)
     [HttpGet]
     public async Task<ActionResult<PagedResult<OrderDto>>> List(
         [FromQuery] string scope = "inventory",
@@ -36,4 +36,9 @@ public class WarehouseOrdersController : ControllerBase
     [HttpPost("dispatch")]
     public async Task<ActionResult<OrderDto>> Dispatch(DispatchOrderRequest request) =>
         Ok(await _orders.DispatchToShipperAsync(UserId, request));
+
+    // Bàn giao hàng hoàn cho người bán (FR68)
+    [HttpPost("return-handover")]
+    public async Task<ActionResult<OrderDto>> HandOverReturn(HandOverReturnRequest request) =>
+        Ok(await _orders.HandOverReturnAsync(UserId, request));
 }

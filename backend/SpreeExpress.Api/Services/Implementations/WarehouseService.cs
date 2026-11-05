@@ -1,4 +1,4 @@
-// Đặt vào: D:\spreeexpress\backend\SpreeExpress.Api\Services\Implementations\
+// Đặt vào: D:\spreeexpress_supabase\spreeexpress\backend\SpreeExpress.Api\Services\Implementations\
 using SpreeExpress.Api.DTOs;
 using SpreeExpress.Api.Entities;
 using SpreeExpress.Api.Helpers;
@@ -12,10 +12,13 @@ public class WarehouseService : IWarehouseService
     private readonly IWarehouseRepository _warehouses;
     private readonly IUserRepository _users;
 
-    public WarehouseService(IWarehouseRepository warehouses, IUserRepository users)
+    private readonly IOrderRepository _orders;
+
+    public WarehouseService(IWarehouseRepository warehouses, IUserRepository users, IOrderRepository orders)
     {
         _warehouses = warehouses;
         _users = users;
+        _orders = orders;
     }
 
     public async Task<PagedResult<WarehouseDto>> ListAsync(
@@ -63,6 +66,11 @@ public class WarehouseService : IWarehouseService
         var row = await _warehouses.GetRowAsync(id)
                   ?? throw new AppException("Không tìm thấy kho", 404);
 
+        // Tồn kho thật: đếm các đơn đang nằm trong kho này
+        var now = DateTime.UtcNow;
+        var startOfTodayUtc = now.AddHours(7).Date.AddHours(-7);
+        var stock = await _orders.GetWarehouseCountsAsync(id, startOfTodayUtc, now.AddHours(-48));
+
         return new WarehouseDetailDto
         {
             Warehouse = ToDto(row),
@@ -77,7 +85,11 @@ public class WarehouseService : IWarehouseService
                 Name = c.Name,
                 IsActive = c.IsActive,
             }).ToList(),
-            StockCount = 0, // chưa có đơn hàng nên chưa có tồn kho
+            StockCount = stock.Inventory,
+            Incoming = stock.Incoming,
+            AwaitingDispatch = stock.AwaitingDispatch,
+            Stale48h = stock.Stale,
+            ReturnsPending = stock.ReturnsPending,
         };
     }
 

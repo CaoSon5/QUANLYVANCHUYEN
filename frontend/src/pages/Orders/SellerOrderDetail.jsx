@@ -1,9 +1,11 @@
+// Đặt vào: D:\spreeexpress_supabase\spreeexpress\frontend\src\pages\Orders\
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import Modal from '../../components/common/Modal';
 import { orderApi } from '../../api/orderApi';
 import { getErrorMessage } from '../../api/authApi';
+import { formatDateTime } from '../../utils/format';
 import OrderForm from './OrderForm';
 import OrderDetailView from './OrderDetailView';
 import OrderStatusPill from './OrderStatusPill';
@@ -16,6 +18,7 @@ export default function SellerOrderDetail({ id }) {
   const [error, setError] = useState('');
   const [editing, setEditing] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -60,6 +63,30 @@ export default function SellerOrderDetail({ id }) {
     }
   };
 
+  // Liên kết tra cứu công khai để người bán gửi cho khách nhận hàng (FR69)
+  const copyTrackingLink = async () => {
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/tra-cuu/${order.code}`);
+      setLinkCopied(true);
+    } catch {
+      window.prompt('Sao chép liên kết này gửi cho khách:', `${window.location.origin}/tra-cuu/${order.code}`);
+    }
+  };
+
+  // FR68: người bán xác nhận đã nhận lại hàng hoàn từ kho
+  const handleConfirmReturn = async () => {
+    if (!window.confirm('Bạn đã nhận lại hàng hoàn của đơn này?')) return;
+    setBusy(true);
+    setError('');
+    try {
+      setOrder(await orderApi.confirmReturn(order.id));
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <>
       {back}
@@ -69,12 +96,17 @@ export default function SellerOrderDetail({ id }) {
           <h1>{order.code}</h1>
           <OrderStatusPill status={order.status} />
         </div>
-        {order.canModify && !editing && (
-          <div className="wh-actions">
-            <button className="btn" onClick={() => setEditing(true)}>Sửa đơn</button>
-            <button className="btn" style={{ color: '#b91c1c' }} onClick={() => setCancelling(true)}>Hủy đơn</button>
-          </div>
-        )}
+        <div className="wh-actions">
+          <button className="btn" onClick={copyTrackingLink} title="Khách mở liên kết này để xem hành trình đơn hàng, không cần đăng nhập">
+            {linkCopied ? 'Đã sao chép liên kết' : 'Sao chép liên kết cho khách'}
+          </button>
+          {order.canModify && !editing && (
+            <>
+              <button className="btn" onClick={() => setEditing(true)}>Sửa đơn</button>
+              <button className="btn" style={{ color: '#b91c1c' }} onClick={() => setCancelling(true)}>Hủy đơn</button>
+            </>
+          )}
+        </div>
       </div>
 
       {error && <div className="acc-banner">{error}</div>}
@@ -82,7 +114,23 @@ export default function SellerOrderDetail({ id }) {
       {order.canModify && !editing && (
         <div className="od-alert">Đơn đang chờ shipper nhận. Bạn vẫn có thể sửa hoặc hủy cho tới khi có shipper nhận đơn.</div>
       )}
-      {!order.canModify && order.status !== 'cancelled' && (
+      {order.status === 'returning' && (
+        <div className="od-alert">
+          Đơn đã giao thất bại nhiều lần nên được hoàn về cho bạn. Kho sẽ bàn giao hàng hoàn, khi nhận được hãy xác nhận tại đây.
+        </div>
+      )}
+      {order.status === 'returned' && !order.returnConfirmedAt && (
+        <div className="od-alert" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <span>Kho đã bàn giao hàng hoàn lúc {formatDateTime(order.returnedAt)}. Khi bạn đã nhận được hàng, hãy xác nhận.</span>
+          <button className="btn btn-primary" disabled={busy} onClick={handleConfirmReturn}>
+            {busy ? 'Đang lưu...' : 'Xác nhận đã nhận lại hàng'}
+          </button>
+        </div>
+      )}
+      {order.status === 'returned' && order.returnConfirmedAt && (
+        <div className="od-ok">Bạn đã xác nhận nhận lại hàng hoàn lúc {formatDateTime(order.returnConfirmedAt)}.</div>
+      )}
+      {!order.canModify && !['cancelled', 'returning', 'returned'].includes(order.status) && (
         <div className="od-ok">Đơn đã có shipper nhận và đang được xử lý nên không thể sửa hoặc hủy.</div>
       )}
 

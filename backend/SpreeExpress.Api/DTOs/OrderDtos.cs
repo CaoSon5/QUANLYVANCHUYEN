@@ -125,6 +125,7 @@ public class OrderDto
     public string? CancelReason { get; set; }
 
     public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
     public DateTime? AcceptedAt { get; set; }
     public DateTime? PickedUpAt { get; set; }
 
@@ -148,6 +149,10 @@ public class OrderDto
     public decimal? CodCollected { get; set; }
     public string? LastFailureReason { get; set; }
     public List<OrderPhotoDto> Photos { get; set; } = new();
+
+    // Hoàn hàng về người bán
+    public DateTime? ReturnedAt { get; set; }
+    public DateTime? ReturnConfirmedAt { get; set; }
 
     // Người bán còn sửa / hủy được không (chỉ khi chưa có shipper nhận)
     public bool CanModify { get; set; }
@@ -179,6 +184,9 @@ public class OrderSummaryDto
     public int AcceptedDelivery { get; set; } // đã nhận giao, chưa lấy hàng ở kho
     public int OutForDelivery { get; set; }   // đang đi giao
     public decimal CodCollected { get; set; } // tổng COD shipper đã thu
+
+    // Hoàn hàng: kho = đơn chờ bàn giao cho người bán; người bán = đơn kho đã bàn giao, chờ mình xác nhận
+    public int ReturnsPending { get; set; }
 }
 
 // Nhân viên kho nhập hàng vào kho bằng mã vận đơn (quét hoặc gõ)
@@ -243,4 +251,19 @@ public class FailForm
     public string? Note { get; set; }
 
     public List<IFormFile>? Photos { get; set; }
+}
+
+// Nhân viên kho bàn giao hàng hoàn cho người bán (FR68)
+public class HandOverReturnRequest
+{
+    [Required(ErrorMessage = "Vui lòng nhập mã vận đơn")]
+    [StringLength(30, ErrorMessage = "Mã vận đơn không hợp lệ")]
+    public string Code { get; set; } = string.Empty;
+
+    // Người thực tế nhận hàng hoàn (người bán, người nhà hoặc shipper mang trả)
+    [StringLength(100, ErrorMessage = "Tên người nhận tối đa 100 ký tự")]
+    public string? ReceiverName { get; set; }
+
+    [StringLength(500, ErrorMessage = "Ghi chú tối đa 500 ký tự")]
+    public string? Note { get; set; }
 }

@@ -1,0 +1,44 @@
+/* Đặt vào: D:\spreeexpress_supabase\spreeexpress\frontend\src\pages\Tracking\ */
+/* Trang tra cứu công khai cho khách nhận hàng */
+.trk-page { min-height: 100vh; background: #f4f6fb; color: #0f172a; }
+.trk-top { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; background: #fff; border-bottom: 1px solid var(--border, #e2e8f0); }
+.trk-brand { display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: 0.4px; color: inherit; text-decoration: none; }
+.trk-logo { width: 36px; height: 36px; border-radius: 10px; background: var(--primary, #2563eb); color: #fff; display: grid; place-items: center; }
+.trk-login { color: var(--primary, #2563eb); font-weight: 600; text-decoration: none; }
+.trk-main { max-width: 760px; margin: 0 auto; padding: 32px 16px 56px; }
+.trk-hero h1 { margin: 0 0 6px; font-size: 28px; }
+.trk-hero p { margin: 0 0 18px; color: #64748b; }
+.trk-form { display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid var(--border, #e2e8f0); border-radius: 14px; padding: 8px 8px 8px 14px; box-shadow: 0 4px 18px rgba(15, 23, 42, 0.05); }
+.trk-form svg { color: #94a3b8; flex-shrink: 0; }
+.trk-form input { flex: 1; min-width: 0; border: none; outline: none; font-size: 16px; background: transparent; }
+.trk-card { background: #fff; border: 1px solid var(--border, #e2e8f0); border-radius: 16px; padding: 22px; margin-top: 18px; box-shadow: 0 4px 18px rgba(15, 23, 42, 0.04); }
+.trk-card h2 { margin: 0 0 14px; font-size: 17px; }
+.trk-muted { color: #64748b; font-size: 14px; }
+.trk-error { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+.trk-code-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
+.trk-label { font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.4px; }
+.trk-code { font-size: 22px; font-weight: 800; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; margin-top: 2px; word-break: break-all; }
+.trk-badge { display: inline-block; padding: 7px 14px; border-radius: 999px; font-weight: 700; font-size: 14px; line-height: 1.3; }
+.trk-good { background: #dcfce7; color: #166534; }
+.trk-bad { background: #fee2e2; color: #991b1b; }
+.trk-progress { background: #dbeafe; color: #1e40af; }
+.trk-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px 22px; margin-top: 20px; }
+.trk-grid b { display: block; margin-top: 2px; font-weight: 600; }
+.trk-note { margin-top: 16px; padding: 12px 14px; border-radius: 12px; background: #fffbeb; border: 1px solid #fde68a; color: #92400e; font-size: 14px; line-height: 1.55; }
+.trk-actions { margin-top: 16px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.trk-timeline { list-style: none; margin: 0; padding: 0; }
+.trk-timeline li { position: relative; display: flex; gap: 14px; padding: 0 0 20px 0; }
+.trk-timeline li:last-child { padding-bottom: 0; }
+.trk-timeline li::before { content: ''; position: absolute; left: 6px; top: 16px; bottom: -2px; width: 2px; background: #e2e8f0; }
+.trk-timeline li:last-child::before { display: none; }
+.trk-timeline .trk-dot { width: 14px; height: 14px; border-radius: 50%; background: #cbd5e1; flex-shrink: 0; margin-top: 4px; position: relative; z-index: 1; }
+.trk-timeline li.now .trk-dot { background: var(--primary, #2563eb); box-shadow: 0 0 0 5px rgba(37, 99, 235, 0.18); }
+.trk-timeline li.now b { color: var(--primary, #2563eb); }
+.trk-timeline small { display: block; color: #64748b; margin-top: 2px; }
+.trk-list { list-style: none; margin: 0; padding: 0; }
+.trk-list li + li { border-top: 1px solid #eef2f7; }
+.trk-list a { display: grid; gap: 6px; padding: 14px 4px; text-decoration: none; color: inherit; }
+.trk-list a:hover b { color: var(--primary, #2563eb); }
+.trk-list small { color: #64748b; }
+.trk-privacy { margin-top: 24px; text-align: center; color: #94a3b8; font-size: 13px; line-height: 1.6; }
+@media (max-width: 560px) { .trk-grid { grid-template-columns: 1fr; } .trk-hero h1 { font-size: 24px; } .trk-form .btn { padding-inline: 14px; } }

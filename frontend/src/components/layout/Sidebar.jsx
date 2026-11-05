@@ -1,4 +1,5 @@
-// Đặt vào: D:\spreeexpress\frontend\src\components\layout\
+// Đặt vào: D:\spreeexpress_supabase\spreeexpress\frontend\src\components\layout\
+import { Fragment } from 'react';
 import { NavLink } from 'react-router-dom';
 import { Truck } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -20,17 +21,18 @@ export default function Sidebar() {
       </div>
 
       <nav className="sidebar-nav">
-        <div className="nav-section">QUẢN LÝ</div>
-        {config.menu.map(({ slug, label, icon: Icon, badge }) => (
-          <NavLink
-            key={slug}
-            to={`/${role}/${slug}`}
-            className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-          >
-            <Icon size={20} />
-            <span>{label}</span>
-            {badge && <em className="nav-badge">{badge}</em>}
-          </NavLink>
+        {config.menu.map(({ slug, label, icon: Icon, badge, section }, index) => (
+          <Fragment key={slug}>
+            {(section || index === 0) && <div className="nav-section">{section ?? 'QUẢN LÝ'}</div>}
+            <NavLink
+              to={`/${role}/${slug}`}
+              className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+            >
+              <Icon size={20} />
+              <span>{label}</span>
+              {badge && <em className="nav-badge">{badge}</em>}
+            </NavLink>
+          </Fragment>
         ))}
       </nav>
 

@@ -39,6 +39,17 @@ public interface IOrderService
     Task<PagedResult<OrderDto>> ListMyDeliveriesAsync(Guid shipperId, string? status, string? search, int page, int pageSize);
     Task<OrderDto> AcceptDeliveryAsync(Guid shipperId, Guid orderId);
 
+    // Hoàn hàng về người bán (FR68): kho bàn giao hàng hoàn, người bán xác nhận đã nhận lại
+    Task<OrderDto> HandOverReturnAsync(Guid staffId, HandOverReturnRequest request);
+    Task<OrderDto> ConfirmReturnReceivedAsync(Guid sellerId, Guid orderId);
+
+    // FR69: tra cứu công khai cho khách nhận hàng (không cần đăng nhập, thông tin đã che bớt)
+    Task<PublicTrackingDto> GetPublicTrackingAsync(string code);
+    Task<List<PublicTrackingSummaryDto>> FindPublicByPhoneAsync(string phone);
+
+    // FR09: các đơn đang nằm trong một kho (Admin, Điều phối viên xem chi tiết kho)
+    Task<PagedResult<OrderDto>> ListWarehouseStockAsync(Guid warehouseId, string? search, int page, int pageSize);
+
     // Shipper cập nhật kết quả giao (FR53, FR54, FR55, FR56)
     Task<OrderDto> CompleteDeliveryAsync(Guid shipperId, Guid orderId, decimal? collectedAmount, string? note, List<PhotoUpload> photos);
     Task<OrderDto> FailDeliveryAsync(Guid shipperId, Guid orderId, string reason, string? note, List<PhotoUpload> photos);

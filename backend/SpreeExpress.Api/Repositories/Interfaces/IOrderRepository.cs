@@ -23,6 +23,7 @@ public class SellerOrderCounts
     public int InProgress { get; set; }
     public int Delivered { get; set; }
     public decimal CodPending { get; set; }
+    public int ReturnsToConfirm { get; set; }   // hàng hoàn kho đã bàn giao, chờ người bán xác nhận
 }
 
 public class WarehouseOrderCounts
@@ -33,6 +34,7 @@ public class WarehouseOrderCounts
     public int Stale { get; set; }
     public int AwaitingDispatch { get; set; }
     public int DispatchedToday { get; set; }
+    public int ReturnsPending { get; set; }     // hàng hoàn đang chờ bàn giao cho người bán
 }
 
 // Thông tin một ảnh (không kèm dữ liệu ảnh để danh sách nhẹ)
@@ -51,6 +53,9 @@ public interface IOrderRepository
     Task<Order?> GetTrackedAsync(Guid id);            // để sửa (có theo dõi thay đổi)
     Task<Order?> GetDetailAsync(Guid id);             // kèm lịch sử, chỉ đọc
     Task<Order?> GetByCodeAsync(string code);
+
+    // Tra cứu công khai theo số điện thoại người nhận (localPhone dạng 0xxxxxxxxx), mới nhất trước
+    Task<List<Order>> FindByReceiverPhoneAsync(string localPhone, int take);
     Task<Order?> GetTrackedByCodeAsync(string code);   // để nhập kho (có theo dõi thay đổi)
 
     Task<(List<Order> Items, int Total)> SearchAsync(OrderFilter filter);

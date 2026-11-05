@@ -13,6 +13,9 @@ public class AppDbContext : DbContext
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderStatusHistory> OrderStatusHistory => Set<OrderStatusHistory>();
     public DbSet<OrderPhoto> OrderPhotos => Set<OrderPhoto>();
+    public DbSet<CodRemittance> CodRemittances => Set<CodRemittance>();
+    public DbSet<Settlement> Settlements => Set<Settlement>();
+    public DbSet<SettlementAdjustment> SettlementAdjustments => Set<SettlementAdjustment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -21,5 +24,7 @@ public class AppDbContext : DbContext
 
         // Bộ đếm sinh mã vận đơn: không bao giờ trùng dù nhiều người tạo đơn cùng lúc
         modelBuilder.HasSequence<long>("order_code_seq");
+        modelBuilder.HasSequence<long>("remittance_code_seq");
+        modelBuilder.HasSequence<long>("settlement_code_seq");
     }
 }

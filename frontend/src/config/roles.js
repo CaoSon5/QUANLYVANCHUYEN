@@ -1,10 +1,11 @@
 // Đặt vào: D:\spreeexpress_supabase\spreeexpress\frontend\src\config\
 import {
   LayoutGrid, Package, Truck, MapPin, Archive, Wallet, Settings, Clock,
-  Download, Upload, TrendingUp, Plus, Calendar, Boxes, Store, BookOpen,
+  Download, Upload, TrendingUp, Plus, Calendar, Boxes, Store, BookOpen, BarChart3,
 } from 'lucide-react';
 
 /*
+ * Mục menu có `section` sẽ mở đầu một nhóm mới trên thanh bên (Admin: báo cáo, rồi thiết lập hệ thống).
  * Nút "Tạo đơn hàng" (dashboard.action) chỉ có ở Người bán và Nhân viên kho. Vai trò khác không khai báo thì không hiện nút.
  *
  * Mỗi role gồm:
@@ -17,32 +18,23 @@ export const ROLES = {
     key: 'admin', short: 'QL', label: 'Quản lý', color: '#1d4ed8',
     desc: 'Quản trị toàn hệ thống',
     menu: [
-      { slug: 'dashboard', label: 'Tổng quan', icon: LayoutGrid },
-      { slug: 'orders', label: 'Quản lý đơn hàng', icon: Package,
-        page: { title: 'Quản lý đơn hàng', subtitle: 'Tra cứu, lọc và quản lý toàn bộ vòng đời vận đơn.', stats: ['Tổng vận đơn', 'Đang giao', 'Hoàn tất hôm nay'] } },
-      { slug: 'dispatch', label: 'Điều phối tài xế', icon: Truck,
-        page: { title: 'Điều phối tài xế', subtitle: 'Chỉ định tài xế và kho đầu tiên tài xế cần đến nhận hàng.', action: 'Điều phối tài xế', stats: ['Chờ điều phối', 'Chuyến đang chạy', 'Tài xế sẵn sàng'] } },
-      { slug: 'tracking', label: 'Theo dõi hành trình', icon: MapPin,
-        page: { title: 'Theo dõi hành trình', subtitle: 'Theo dõi timeline đơn hàng và vị trí shipper theo thời gian thực.', action: 'Mở bản đồ', stats: ['Đang di chuyển', 'Sắp giao', 'Cảnh báo trễ'] } },
-      { slug: 'warehouses', label: 'Kho & bưu cục', icon: Archive,
-        page: { title: 'Kho & bưu cục', subtitle: 'Quản lý nhập, xuất và tồn hàng tại các bưu cục.', action: 'Quét mã vận đơn', stats: ['Đang lưu kho', 'Đã nhập hôm nay', 'Đã xuất hôm nay'] } },
-      { slug: 'cod', label: 'Đối soát COD', icon: Wallet,
-        page: { title: 'Đối soát COD', subtitle: 'Đối chiếu tiền thu hộ theo shipper và vận đơn.', action: 'Tạo phiên đối soát', stats: ['COD đã thu', 'Chờ nộp', 'Đã đối soát'] } },
-      { slug: 'staff', label: 'Nhân sự & phương tiện', icon: Truck,
-        page: { title: 'Nhân sự & phương tiện', subtitle: 'Quản lý hồ sơ, trạng thái của shipper, tài xế và phương tiện.', action: 'Thêm nhân sự', stats: ['Tổng nhân sự', 'Đang hoạt động', 'Phương tiện'] } },
-      { slug: 'accounts', label: 'Tài khoản & phân quyền', icon: Settings,
-        page: { title: 'Tài khoản & phân quyền', subtitle: 'Quản lý người dùng và quyền truy cập theo vai trò.', action: 'Thêm tài khoản', stats: ['Tài khoản', 'Vai trò', 'Đang hoạt động'] } },
+      { slug: 'dashboard', label: 'Tổng quan', icon: LayoutGrid, section: 'BÁO CÁO & GIÁM SÁT' },
+      { slug: 'reports', label: 'Báo cáo doanh thu', icon: TrendingUp },
+      { slug: 'ops-reports', label: 'Báo cáo vận hành', icon: BarChart3 },
+      { slug: 'orders', label: 'Quản lý đơn hàng', icon: Package },
+      { slug: 'cod', label: 'Đối soát COD', icon: Wallet },
+      { slug: 'warehouses', label: 'Kho & bưu cục', icon: Archive, section: 'THIẾT LẬP HỆ THỐNG' },
+      { slug: 'accounts', label: 'Tài khoản & phân quyền', icon: Settings },
     ],
     dashboard: {
       title: 'Tổng quan hệ thống',
       subtitle: 'Theo dõi toàn bộ hoạt động của Spree Express hôm nay.',
       stats: [
         { label: 'Tổng đơn hàng', value: '—' },
-        { label: 'Shipper hoạt động', value: '—' },
-        { label: 'COD đã thu', value: '—' },
+        { label: 'Đang xử lý', value: '—' },
         { label: 'Giao thành công', value: '—' },
+        { label: 'Doanh thu phí tháng này', value: '—' },
       ],
-      showOrdersTable: true,
     },
   },
 
@@ -75,6 +67,7 @@ export const ROLES = {
       { slug: 'dashboard', label: 'Tổng quan', icon: LayoutGrid },
       { slug: 'inbound', label: 'Nhập hàng vào kho', icon: Download },
       { slug: 'outbound', label: 'Xuất hàng cho shipper', icon: Truck },
+      { slug: 'returns', label: 'Hàng hoàn chờ trả', icon: Boxes },
       { slug: 'inventory', label: 'Kiểm tra tồn kho', icon: Package },
       { slug: 'post-office', label: 'Quản lý bưu cục', icon: Archive },
     ],
@@ -155,7 +148,7 @@ export const ROLES = {
         { label: 'COD đã thu', value: '—' },
         { label: 'Chờ shipper nộp', value: '—' },
         { label: 'Lệnh chuyển tiền', value: '—' },
-        { label: 'Đã đối soát', value: '—' },
+        { label: 'Đã chuyển tiền', value: '—' },
       ],
     },
   },
@@ -168,6 +161,7 @@ export const ROLES = {
       { slug: 'create-pickup', label: 'Tạo yêu cầu lấy hàng', icon: Plus },
       { slug: 'my-orders', label: 'Đơn hàng của tôi', icon: Package },
       { slug: 'tracking', label: 'Tra cứu hành trình', icon: MapPin },
+      { slug: 'settlements', label: 'Đối soát COD', icon: Wallet },
       { slug: 'addresses', label: 'Sổ địa chỉ', icon: BookOpen },
     ],
     dashboard: {
