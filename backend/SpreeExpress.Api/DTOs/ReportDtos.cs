@@ -81,6 +81,7 @@ public class WarehouseStockDto
     public bool IsActive { get; set; }
     public int Incoming { get; set; }                    // đang trên đường về kho (shipper đã lấy hàng)
     public int InStock { get; set; }                     // đã nhập kho, chưa ai nhận giao
+    public int Bundled { get; set; }                     // đã gộp vào bao, chờ chuyển sang kho khác
     public int AwaitingDispatch { get; set; }            // shipper đã nhận giao, chờ kho xuất hàng
     public int Retry { get; set; }                       // giao thất bại, chờ giao lại
     public int Returning { get; set; }                   // chờ hoàn hàng về người bán

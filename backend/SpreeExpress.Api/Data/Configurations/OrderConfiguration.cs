@@ -46,6 +46,7 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
         b.HasIndex(x => x.DeliveryShipperId);
         b.HasIndex(x => x.CodRemittanceId);
         b.HasIndex(x => x.SettlementId);
+        b.HasIndex(x => x.BundleId);
 
         // Hai cột này là "concurrency token": một đơn không thể bị đưa vào 2 phiếu nộp / 2 bảng đối soát cùng lúc
         b.Property(x => x.CodRemittanceId).IsConcurrencyToken();

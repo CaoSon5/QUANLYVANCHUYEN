@@ -156,7 +156,7 @@ public class ReportService : IReportService
         var staleBefore = now.AddHours(-48);
         var inside = new[]
         {
-            OrderStatus.InWarehouse, OrderStatus.DeliveryAccepted, OrderStatus.DeliveryFailed, OrderStatus.Returning,
+            OrderStatus.InWarehouse, OrderStatus.Bundled, OrderStatus.DeliveryAccepted, OrderStatus.DeliveryFailed, OrderStatus.Returning,
         };
 
         var list = new List<WarehouseStockDto>();
@@ -182,6 +182,7 @@ public class ReportService : IReportService
                 IsActive = w.IsActive,
                 Incoming = incoming,
                 InStock = mine.Count(s => s.Status == OrderStatus.InWarehouse),
+                Bundled = mine.Count(s => s.Status == OrderStatus.Bundled),
                 AwaitingDispatch = mine.Count(s => s.Status == OrderStatus.DeliveryAccepted),
                 Retry = mine.Count(s => s.Status == OrderStatus.DeliveryFailed),
                 Returning = mine.Count(s => s.Status == OrderStatus.Returning),

@@ -366,7 +366,7 @@ public class OrderService : IOrderService
             filter.CurrentWarehouseId = staff.WarehouseId;
             filter.Statuses = new List<OrderStatus>
             {
-                OrderStatus.InWarehouse, OrderStatus.DeliveryAccepted, OrderStatus.DeliveryFailed, OrderStatus.Returning,
+                OrderStatus.InWarehouse, OrderStatus.Bundled, OrderStatus.DeliveryAccepted, OrderStatus.DeliveryFailed, OrderStatus.Returning,
             };
         }
 
@@ -609,6 +609,7 @@ public class OrderService : IOrderService
         OrderStatus.PickupAccepted => "Shipper đã nhận đơn và sắp đến lấy hàng",
         OrderStatus.PickedUp => "Đã lấy hàng từ người gửi",
         OrderStatus.InWarehouse => "Hàng đã về kho",
+        OrderStatus.Bundled => "Hàng đang được đóng gói để chuyển sang kho khác",
         OrderStatus.DeliveryAccepted => "Đơn đã được phân cho shipper giao",
         OrderStatus.InTransit => "Hàng đang được vận chuyển giữa các kho",
         OrderStatus.OutForDelivery => "Shipper đang giao hàng đến bạn",
@@ -629,7 +630,7 @@ public class OrderService : IOrderService
             CurrentWarehouseId = warehouseId,
             Statuses = new List<OrderStatus>
             {
-                OrderStatus.InWarehouse, OrderStatus.DeliveryAccepted, OrderStatus.DeliveryFailed, OrderStatus.Returning,
+                OrderStatus.InWarehouse, OrderStatus.Bundled, OrderStatus.DeliveryAccepted, OrderStatus.DeliveryFailed, OrderStatus.Returning,
             },
             Search = search?.Trim(),
             OldestFirst = true,
@@ -974,7 +975,7 @@ public class OrderService : IOrderService
     };
 
     private static bool IsInWarehouse(OrderStatus s) =>
-        s == OrderStatus.InWarehouse || s == OrderStatus.DeliveryAccepted
+        s == OrderStatus.InWarehouse || s == OrderStatus.Bundled || s == OrderStatus.DeliveryAccepted
         || s == OrderStatus.DeliveryFailed || s == OrderStatus.Returning;
 
     // "pending_pickup" -> OrderStatus.PendingPickup
@@ -1040,6 +1041,8 @@ public class OrderService : IOrderService
         LastFailureReason = o.LastFailureReason,
         ReturnedAt = o.ReturnedAt,
         ReturnConfirmedAt = o.ReturnConfirmedAt,
+        BundleId = o.BundleId,
+        BundleCode = o.Bundle?.Code,
         ReceivedAt = o.ReceivedAt,
         ReceivedQuantity = o.ReceivedQuantity,
         CanModify = canModify,

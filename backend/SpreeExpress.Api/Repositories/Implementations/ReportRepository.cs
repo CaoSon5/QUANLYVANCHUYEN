@@ -123,6 +123,7 @@ public class ReportRepository : IReportRepository
         var rows = await _db.Orders.AsNoTracking()
             .Where(o => o.Status == OrderStatus.PickedUp
                         || o.Status == OrderStatus.InWarehouse
+                        || o.Status == OrderStatus.Bundled
                         || o.Status == OrderStatus.DeliveryAccepted
                         || o.Status == OrderStatus.DeliveryFailed
                         || o.Status == OrderStatus.Returning)

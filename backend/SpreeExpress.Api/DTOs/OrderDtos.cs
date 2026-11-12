@@ -154,6 +154,10 @@ public class OrderDto
     public DateTime? ReturnedAt { get; set; }
     public DateTime? ReturnConfirmedAt { get; set; }
 
+    // Bao hàng chứa đơn này (nếu có)
+    public Guid? BundleId { get; set; }
+    public string? BundleCode { get; set; }
+
     // Người bán còn sửa / hủy được không (chỉ khi chưa có shipper nhận)
     public bool CanModify { get; set; }
 

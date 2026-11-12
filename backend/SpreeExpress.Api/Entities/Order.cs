@@ -69,6 +69,10 @@ public class Order
     public Guid? SettlementId { get; set; }
     public Settlement? Settlement { get; set; }
 
+    // Bao hàng: gộp đơn để chuyển giữa các kho (FR33)
+    public Guid? BundleId { get; set; }
+    public Bundle? Bundle { get; set; }
+
     // Hoàn hàng về người bán (FR68)
     public DateTime? ReturnedAt { get; set; }          // kho bàn giao hàng hoàn
     public DateTime? ReturnConfirmedAt { get; set; }   // người bán xác nhận đã nhận lại hàng

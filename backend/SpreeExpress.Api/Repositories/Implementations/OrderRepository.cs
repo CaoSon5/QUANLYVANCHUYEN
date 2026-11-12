@@ -23,6 +23,7 @@ public class OrderRepository : IOrderRepository
             .Include(o => o.PickupShipper)
             .Include(o => o.CurrentWarehouse)
             .Include(o => o.DeliveryShipper)
+            .Include(o => o.Bundle)
             .FirstOrDefaultAsync(o => o.Id == id);
 
     private IQueryable<Order> DetailQuery() =>
@@ -32,6 +33,7 @@ public class OrderRepository : IOrderRepository
             .Include(o => o.PickupShipper)
             .Include(o => o.CurrentWarehouse)
             .Include(o => o.DeliveryShipper)
+            .Include(o => o.Bundle)
             .Include(o => o.History).ThenInclude(h => h.ActorUser);
 
     public Task<Order?> GetDetailAsync(Guid id) =>
@@ -59,7 +61,8 @@ public class OrderRepository : IOrderRepository
             .Include(o => o.PickupWarehouse)
             .Include(o => o.PickupShipper)
             .Include(o => o.CurrentWarehouse)
-            .Include(o => o.DeliveryShipper);
+            .Include(o => o.DeliveryShipper)
+            .Include(o => o.Bundle);
 
         if (f.SellerId.HasValue)
         {
@@ -151,6 +154,7 @@ public class OrderRepository : IOrderRepository
             .Include(o => o.PickupShipper)
             .Include(o => o.CurrentWarehouse)
             .Include(o => o.DeliveryShipper)
+            .Include(o => o.Bundle)
             .FirstOrDefaultAsync(o => o.Code == code);
 
     public async Task<SellerOrderCounts> GetOverallCountsAsync()
@@ -175,7 +179,7 @@ public class OrderRepository : IOrderRepository
         // Hàng đang nằm trong kho: đã nhập kho, kể cả đơn shipper đã nhận giao nhưng kho chưa xuất
         var inventory = _db.Orders.AsNoTracking()
             .Where(o => o.CurrentWarehouseId == warehouseId &&
-                        (o.Status == OrderStatus.InWarehouse || o.Status == OrderStatus.DeliveryAccepted ||
+                        (o.Status == OrderStatus.InWarehouse || o.Status == OrderStatus.Bundled || o.Status == OrderStatus.DeliveryAccepted ||
                          o.Status == OrderStatus.DeliveryFailed || o.Status == OrderStatus.Returning));
 
         return new WarehouseOrderCounts

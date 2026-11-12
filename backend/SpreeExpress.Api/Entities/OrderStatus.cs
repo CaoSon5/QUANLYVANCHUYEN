@@ -8,6 +8,7 @@ public enum OrderStatus
     PickupAccepted,  // Shipper đã nhận, chưa đến lấy
     PickedUp,        // Shipper đã lấy hàng từ người bán
     InWarehouse,     // Đã nhập kho
+    Bundled,         // Đã gộp vào bao, chờ chuyển sang kho khác
     DeliveryAccepted,// Shipper đã nhận giao, chờ kho xuất hàng
     InTransit,       // Đang vận chuyển liên kho
     OutForDelivery,  // Đang giao cho người nhận
