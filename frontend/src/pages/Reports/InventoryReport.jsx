@@ -14,8 +14,8 @@ export default function InventoryReport() {
   const exportCsv = () => {
     if (!data) return;
     downloadCsv('bao-cao-ton-kho.csv', [
-      ['Mã kho', 'Tên kho', 'Loại', 'Đang về kho', 'Đã nhập kho', 'Chờ xuất', 'Chờ giao lại', 'Chờ hoàn', 'Tổng đơn', 'Tổng kiện', 'Quá 48 giờ', 'Giờ lưu trung bình'],
-      ...data.warehouses.map((w) => [w.code, w.name, w.type === 'regional' ? 'Kho vùng' : 'Kho địa phương', w.incoming, w.inStock, w.awaitingDispatch, w.retry, w.returning, w.totalOrders, w.pieces, w.stale48h, w.averageStorageHours ?? '']),
+      ['Mã kho', 'Tên kho', 'Loại', 'Đang về kho', 'Đã nhập kho', 'Đã gộp bao', 'Chờ xuất', 'Chờ giao lại', 'Chờ hoàn', 'Tổng đơn', 'Tổng kiện', 'Quá 48 giờ', 'Giờ lưu trung bình'],
+      ...data.warehouses.map((w) => [w.code, w.name, w.type === 'regional' ? 'Kho vùng' : 'Kho địa phương', w.incoming, w.inStock, w.bundled, w.awaitingDispatch, w.retry, w.returning, w.totalOrders, w.pieces, w.stale48h, w.averageStorageHours ?? '']),
     ]);
   };
 
@@ -43,10 +43,10 @@ export default function InventoryReport() {
         </div>
 
         <div className="acc-scroll">
-          <table className="data-table" style={{ minWidth: 980 }}>
+          <table className="data-table" style={{ minWidth: 1060 }}>
             <thead>
               <tr>
-                <th>KHO</th><th>ĐANG VỀ KHO</th><th>ĐÃ NHẬP KHO</th><th>CHỜ XUẤT</th><th>CHỜ GIAO LẠI</th>
+                <th>KHO</th><th>ĐANG VỀ KHO</th><th>ĐÃ NHẬP KHO</th><th>ĐÃ GỘP BAO</th><th>CHỜ XUẤT</th><th>CHỜ GIAO LẠI</th>
                 <th>CHỜ HOÀN</th><th>TỔNG ĐƠN</th><th>TỔNG KIỆN</th><th>QUÁ 48 GIỜ</th><th>GIỜ LƯU TB</th>
               </tr>
             </thead>
@@ -59,6 +59,7 @@ export default function InventoryReport() {
                   </td>
                   <td>{w.incoming}</td>
                   <td>{w.inStock}</td>
+                  <td>{w.bundled}</td>
                   <td>{w.awaitingDispatch}</td>
                   <td>{w.retry}</td>
                   <td>{w.returning}</td>

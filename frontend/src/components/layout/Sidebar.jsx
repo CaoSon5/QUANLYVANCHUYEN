@@ -35,12 +35,6 @@ export default function Sidebar() {
           </Fragment>
         ))}
       </nav>
-
-      <div className="role-box">
-        <small>ĐANG ĐĂNG NHẬP</small>
-        <strong>{config.label}</strong>
-        <span>{config.desc}</span>
-      </div>
     </aside>
   );
 }

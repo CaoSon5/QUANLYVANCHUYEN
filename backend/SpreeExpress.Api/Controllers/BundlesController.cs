@@ -38,11 +38,17 @@ public class BundlesController : ControllerBase
 
     // ----- Thao tác của nhân viên kho -----
 
-    // Các kho có thể chọn làm kho đích (kèm mã kho để nhập)
+    // Các kho kế tiếp mà kho mình được gộp bao đi (kèm mã kho để nhập)
     [Authorize(Roles = "Warehouse")]
     [HttpGet("destinations")]
     public async Task<ActionResult<List<DestinationOptionDto>>> Destinations([FromQuery] string? search) =>
         Ok(await _bundles.ListDestinationsAsync(UserId, search));
+
+    // Các đơn trong kho mình có kho kế tiếp = kho đích của bao này (để chọn thêm vào bao)
+    [Authorize(Roles = "Warehouse")]
+    [HttpGet("{id:guid}/candidates")]
+    public async Task<ActionResult<List<BundleOrderDto>>> Candidates(Guid id) =>
+        Ok(await _bundles.ListCandidatesAsync(UserId, id));
 
     [Authorize(Roles = "Warehouse")]
     [HttpPost]

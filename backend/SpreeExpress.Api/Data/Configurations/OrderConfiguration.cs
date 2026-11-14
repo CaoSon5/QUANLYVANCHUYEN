@@ -12,7 +12,8 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
         b.ToTable("orders");
         b.HasKey(x => x.Id);
 
-        b.Property(x => x.Code).IsRequired().HasMaxLength(30);
+        // Dạng HANOI-BD-SPR7K4Q9X (mã kho vùng - mã kho đích - SPR + 6 ký tự ngẫu nhiên), tối đa 60 ký tự
+        b.Property(x => x.Code).IsRequired().HasMaxLength(60);
 
         // Status là "concurrency token": nếu 2 người cùng đổi trạng thái một đơn (ví dụ 2 shipper cùng nhận)
         // thì người đến sau bị từ chối thay vì ghi đè.
@@ -47,6 +48,7 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
         b.HasIndex(x => x.CodRemittanceId);
         b.HasIndex(x => x.SettlementId);
         b.HasIndex(x => x.BundleId);
+        b.HasIndex(x => new { x.DestinationWarehouseId, x.Status });
 
         // Hai cột này là "concurrency token": một đơn không thể bị đưa vào 2 phiếu nộp / 2 bảng đối soát cùng lúc
         b.Property(x => x.CodRemittanceId).IsConcurrencyToken();
@@ -57,6 +59,7 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
         b.HasOne(x => x.PickupShipper).WithMany().HasForeignKey(x => x.PickupShipperId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne(x => x.CurrentWarehouse).WithMany().HasForeignKey(x => x.CurrentWarehouseId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne(x => x.DeliveryShipper).WithMany().HasForeignKey(x => x.DeliveryShipperId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne(x => x.DestinationWarehouse).WithMany().HasForeignKey(x => x.DestinationWarehouseId).OnDelete(DeleteBehavior.Restrict);
     }
 }
 

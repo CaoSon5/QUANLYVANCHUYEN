@@ -11,8 +11,10 @@ import InboundPage from './Warehouses/InboundPage';
 import InventoryPage from './Warehouses/InventoryPage';
 import OutboundPage from './Warehouses/OutboundPage';
 import ReturnsPage from './Warehouses/ReturnsPage';
+import BundlesPage from './Warehouses/BundlesPage';
 import PendingDeliveryPage from './Deliveries/PendingDeliveryPage';
 import DeliveringPage from './Deliveries/DeliveringPage';
+import DeliveryHistoryPage from './Deliveries/DeliveryHistoryPage';
 import ShipperCodPage from './Cod/ShipperCodPage';
 import RemittancesPage from './Finance/RemittancesPage';
 import SettlementsPage from './Finance/SettlementsPage';
@@ -36,8 +38,10 @@ export const PAGES = {
   'warehouse/inventory': InventoryPage,
   'warehouse/outbound': OutboundPage,
   'warehouse/returns': ReturnsPage,
+  'warehouse/bundles': BundlesPage,
   'shipper/pending-delivery': PendingDeliveryPage,
   'shipper/delivering': DeliveringPage,
+  'shipper/history': DeliveryHistoryPage,
   'shipper/cod': ShipperCodPage,
   'accountant/shipper-cod': RemittancesPage,
   'accountant/seller-settlement': SettlementsPage,

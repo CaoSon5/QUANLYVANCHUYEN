@@ -67,6 +67,8 @@ public class UserDto
     public Guid? WarehouseId { get; set; }
     public string? WarehouseCode { get; set; }
     public string? WarehouseName { get; set; }
+
+    public DateTime CreatedAt { get; set; }
 }
 
 public class AuthResponse

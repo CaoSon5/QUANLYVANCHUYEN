@@ -31,13 +31,16 @@ public class OrderRequest
     [StringLength(300, ErrorMessage = "Địa chỉ người nhận tối đa 300 ký tự")]
     public string ReceiverAddress { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Vui lòng nhập quận/huyện người nhận")]
-    [StringLength(100)]
-    public string ReceiverDistrict { get; set; } = string.Empty;
+    // Kho địa phương phụ trách địa chỉ người nhận (người bán chọn quận/huyện từ danh sách).
+    // Hệ thống tự điền quận/huyện, tỉnh/thành và sinh mã vận đơn từ kho này.
+    public Guid? DestinationWarehouseId { get; set; }
 
-    [Required(ErrorMessage = "Vui lòng nhập tỉnh/thành người nhận")]
+    // Chỉ còn dùng để tương thích form cũ: nếu không gửi DestinationWarehouseId thì dò kho theo tên quận/huyện
     [StringLength(100)]
-    public string ReceiverProvince { get; set; } = string.Empty;
+    public string? ReceiverDistrict { get; set; }
+
+    [StringLength(100)]
+    public string? ReceiverProvince { get; set; }
 
     [Required(ErrorMessage = "Vui lòng nhập nội dung hàng hóa")]
     [StringLength(200, ErrorMessage = "Nội dung hàng hóa tối đa 200 ký tự")]
@@ -116,6 +119,11 @@ public class OrderDto
     public string PickupWarehouseCode { get; set; } = string.Empty;
     public string PickupWarehouseName { get; set; } = string.Empty;
     public string PickupWarehouseAddress { get; set; } = string.Empty;
+
+    // Kho đích (kho địa phương phụ trách địa chỉ người nhận)
+    public Guid? DestinationWarehouseId { get; set; }
+    public string? DestinationWarehouseCode { get; set; }
+    public string? DestinationWarehouseName { get; set; }
 
     public Guid? ShipperId { get; set; }
     public string? ShipperName { get; set; }
@@ -197,7 +205,7 @@ public class OrderSummaryDto
 public class ReceiveOrderRequest
 {
     [Required(ErrorMessage = "Vui lòng nhập mã vận đơn")]
-    [StringLength(30, ErrorMessage = "Mã vận đơn không hợp lệ")]
+    [StringLength(60, ErrorMessage = "Mã vận đơn không hợp lệ")]
     public string Code { get; set; } = string.Empty;
 
     // Bỏ trống = nhận đủ số kiện shipper đã lấy. Nhập khác để ghi nhận thiếu/thừa.
@@ -212,7 +220,7 @@ public class ReceiveOrderRequest
 public class DispatchOrderRequest
 {
     [Required(ErrorMessage = "Vui lòng nhập mã vận đơn")]
-    [StringLength(30, ErrorMessage = "Mã vận đơn không hợp lệ")]
+    [StringLength(60, ErrorMessage = "Mã vận đơn không hợp lệ")]
     public string Code { get; set; } = string.Empty;
 }
 
@@ -261,7 +269,7 @@ public class FailForm
 public class HandOverReturnRequest
 {
     [Required(ErrorMessage = "Vui lòng nhập mã vận đơn")]
-    [StringLength(30, ErrorMessage = "Mã vận đơn không hợp lệ")]
+    [StringLength(60, ErrorMessage = "Mã vận đơn không hợp lệ")]
     public string Code { get; set; } = string.Empty;
 
     // Người thực tế nhận hàng hoàn (người bán, người nhà hoặc shipper mang trả)
@@ -270,4 +278,15 @@ public class HandOverReturnRequest
 
     [StringLength(500, ErrorMessage = "Ghi chú tối đa 500 ký tự")]
     public string? Note { get; set; }
+}
+
+// Ô chọn địa chỉ nhận của người bán: mỗi dòng là một kho địa phương (= một quận/huyện), nhóm theo kho vùng (= tỉnh/thành)
+public class ReceiverAreaDto
+{
+    public Guid Id { get; set; }              // kho địa phương
+    public string Code { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;   // tên quận/huyện
+    public Guid RegionId { get; set; }        // kho vùng quản lý
+    public string RegionCode { get; set; } = string.Empty;
+    public string RegionName { get; set; } = string.Empty;
 }

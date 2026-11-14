@@ -8,6 +8,7 @@ import RegisterPage from '../pages/Register/RegisterPage';
 import SetupPage from '../pages/Setup/SetupPage';
 import ChangePasswordPage from '../pages/ChangePassword/ChangePasswordPage';
 import RolePage from '../pages/RolePage';
+import ProfilePage from '../pages/Profile/ProfilePage';
 import PublicTrackingPage from '../pages/Tracking/PublicTrackingPage';
 
 // Chỉ cho vào khi đã đăng nhập và đúng role trên URL
@@ -36,6 +37,8 @@ export default function AppRoutes() {
 
       <Route path="/:role" element={<RequireAuth><MainLayout /></RequireAuth>}>
         <Route index element={<Navigate to="dashboard" replace />} />
+        {/* Hồ sơ cá nhân: dùng chung cho mọi vai trò, mở từ menu ở tên tài khoản */}
+        <Route path="profile" element={<ProfilePage />} />
         <Route path=":page" element={<RolePage />} />
         <Route path=":page/:id" element={<RolePage />} />
       </Route>

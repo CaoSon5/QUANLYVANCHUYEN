@@ -31,6 +31,15 @@ public class AuthController : ControllerBase
         return Ok(await _auth.ChangePasswordAsync(id, request));
     }
 
+    // Người dùng tự sửa hồ sơ của mình (họ tên, số điện thoại). Email, vai trò, kho không đổi được ở đây.
+    [Authorize]
+    [HttpPut("me")]
+    public async Task<ActionResult<AuthResponse>> UpdateMe(UpdateProfileRequest request)
+    {
+        var id = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        return Ok(await _auth.UpdateProfileAsync(id, request));
+    }
+
     // Lấy thông tin người đang đăng nhập (cần gửi kèm token)
     [Authorize]
     [HttpGet("me")]

@@ -40,8 +40,12 @@ builder.Services.AddScoped<IWarehouseRepository, WarehouseRepository>();
 builder.Services.AddScoped<IWarehouseService, WarehouseService>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IOrderService, OrderService>();
+builder.Services.AddScoped<IFinanceRepository, FinanceRepository>();
+builder.Services.AddScoped<IFinanceService, FinanceService>();
 builder.Services.AddSingleton<ShippingFeeCalculator>();
 builder.Services.AddSingleton<JwtTokenGenerator>();
+builder.Services.AddScoped<IReportRepository, ReportRepository>();
+builder.Services.AddScoped<IReportService, ReportService>();
 
 // ----- Controllers: lỗi validate trả về { message } -----
 builder.Services.AddControllers().ConfigureApiBehaviorOptions(options =>

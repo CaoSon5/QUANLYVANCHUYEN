@@ -46,7 +46,7 @@ public static class PublicMask
         return Regex.IsMatch(cleaned, @"^0\d{9}$") ? cleaned : null;
     }
 
-    // Mã vận đơn chỉ gồm chữ và số, 6 đến 30 ký tự
+    // Mã vận đơn gồm chữ, số và dấu gạch ngang, 6 đến 60 ký tự (mã mới: HANOI-BD-SPR7K4Q9X, mã cũ: SPR25062400128)
     public static bool LooksLikeOrderCode(string? code) =>
-        !string.IsNullOrEmpty(code) && Regex.IsMatch(code, @"^[A-Z0-9]{6,30}$");
+        !string.IsNullOrEmpty(code) && Regex.IsMatch(code, @"^[A-Z0-9][A-Z0-9\-]{5,59}$");
 }

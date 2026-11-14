@@ -43,6 +43,11 @@ public class Order
     public int? PickedQuantity { get; set; }
     public string? PickupNote { get; set; }
 
+    // Kho đích: kho địa phương phụ trách địa chỉ người nhận, tự tính lúc tạo đơn.
+    // Gộp bao, điều phối đều dựa vào cột này (mã vận đơn chỉ để người đọc).
+    public Guid? DestinationWarehouseId { get; set; }
+    public Warehouse? DestinationWarehouse { get; set; }
+
     public string? CancelReason { get; set; }
 
     // Nhập kho: kho đang giữ hàng, thời điểm nhập và số kiện thực nhận

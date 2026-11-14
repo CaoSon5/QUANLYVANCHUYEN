@@ -5,6 +5,7 @@ export const ORDER_STATUS = {
   pickup_accepted: { label: 'Shipper đã nhận', tone: 'blue' },
   picked_up: { label: 'Đã lấy hàng', tone: 'sky' },
   in_warehouse: { label: 'Đã nhập kho', tone: 'purple' },
+  bundled: { label: 'Đã gộp bao', tone: 'blue' },
   delivery_accepted: { label: 'Shipper nhận giao', tone: 'blue' },
   in_transit: { label: 'Đang vận chuyển', tone: 'sky' },
   out_for_delivery: { label: 'Đang giao', tone: 'blue' },

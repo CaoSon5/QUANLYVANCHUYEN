@@ -1,7 +1,7 @@
 // Đặt vào: D:\spreeexpress_supabase\spreeexpress\frontend\src\config\
 import {
   LayoutGrid, Package, Truck, MapPin, Archive, Wallet, Settings, Clock,
-  Download, Upload, TrendingUp, Plus, Calendar, Boxes, Store, BookOpen, BarChart3,
+  Download, Upload, TrendingUp, Plus, Calendar, Boxes, Store, BookOpen, BarChart3, Layers,
 } from 'lucide-react';
 
 /*
@@ -66,6 +66,7 @@ export const ROLES = {
     menu: [
       { slug: 'dashboard', label: 'Tổng quan', icon: LayoutGrid },
       { slug: 'inbound', label: 'Nhập hàng vào kho', icon: Download },
+      { slug: 'bundles', label: 'Bao hàng', icon: Layers },
       { slug: 'outbound', label: 'Xuất hàng cho shipper', icon: Truck },
       { slug: 'returns', label: 'Hàng hoàn chờ trả', icon: Boxes },
       { slug: 'inventory', label: 'Kiểm tra tồn kho', icon: Package },
@@ -126,7 +127,7 @@ export const ROLES = {
         { label: 'Đơn chờ lấy', value: '—' },
         { label: 'Đơn chờ giao', value: '—' },
         { label: 'Đang giao', value: '—' },
-        { label: 'COD đã thu', value: '—' },
+        { label: 'COD đang giữ', value: '—' },
       ],
     },
   },

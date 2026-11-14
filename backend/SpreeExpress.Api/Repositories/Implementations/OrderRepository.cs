@@ -22,6 +22,7 @@ public class OrderRepository : IOrderRepository
             .Include(o => o.PickupWarehouse)
             .Include(o => o.PickupShipper)
             .Include(o => o.CurrentWarehouse)
+            .Include(o => o.DestinationWarehouse)
             .Include(o => o.DeliveryShipper)
             .Include(o => o.Bundle)
             .FirstOrDefaultAsync(o => o.Id == id);
@@ -32,6 +33,7 @@ public class OrderRepository : IOrderRepository
             .Include(o => o.PickupWarehouse)
             .Include(o => o.PickupShipper)
             .Include(o => o.CurrentWarehouse)
+            .Include(o => o.DestinationWarehouse)
             .Include(o => o.DeliveryShipper)
             .Include(o => o.Bundle)
             .Include(o => o.History).ThenInclude(h => h.ActorUser);
@@ -61,6 +63,7 @@ public class OrderRepository : IOrderRepository
             .Include(o => o.PickupWarehouse)
             .Include(o => o.PickupShipper)
             .Include(o => o.CurrentWarehouse)
+            .Include(o => o.DestinationWarehouse)
             .Include(o => o.DeliveryShipper)
             .Include(o => o.Bundle);
 
@@ -153,6 +156,7 @@ public class OrderRepository : IOrderRepository
             .Include(o => o.PickupWarehouse)
             .Include(o => o.PickupShipper)
             .Include(o => o.CurrentWarehouse)
+            .Include(o => o.DestinationWarehouse)
             .Include(o => o.DeliveryShipper)
             .Include(o => o.Bundle)
             .FirstOrDefaultAsync(o => o.Code == code);
@@ -216,6 +220,43 @@ public class OrderRepository : IOrderRepository
         _db.Orders
             .Where(o => o.DeliveryShipperId == shipperId && o.Status == OrderStatus.Delivered)
             .SumAsync(o => o.CodCollected ?? 0m);
+
+    public Task<List<ShipperHistoryRow>> GetShipperHistoryRowsAsync(Guid shipperId, DateTime fromUtc) =>
+        _db.OrderStatusHistory.AsNoTracking()
+            .Where(h => h.ActorUserId == shipperId
+                        && h.CreatedAt >= fromUtc
+                        && (h.Status == OrderStatus.Delivered
+                            || h.Status == OrderStatus.DeliveryFailed
+                            || h.Status == OrderStatus.Returning))
+            .Select(h => new ShipperHistoryRow { Status = h.Status, CreatedAt = h.CreatedAt })
+            .ToListAsync();
+
+    public async Task<(List<OrderStatusHistory> Items, int Total)> SearchShipperHistoryAsync(
+        Guid shipperId, string? result, int page, int pageSize)
+    {
+        IQueryable<OrderStatusHistory> query = _db.OrderStatusHistory.AsNoTracking()
+            .Include(h => h.Order)
+            .Where(h => h.ActorUserId == shipperId);
+
+        query = result switch
+        {
+            "delivered" => query.Where(h => h.Status == OrderStatus.Delivered),
+            "failed" => query.Where(h => h.Status == OrderStatus.DeliveryFailed
+                                         || h.Status == OrderStatus.Returning),
+            _ => query.Where(h => h.Status == OrderStatus.Delivered
+                                  || h.Status == OrderStatus.DeliveryFailed
+                                  || h.Status == OrderStatus.Returning),
+        };
+
+        var total = await query.CountAsync();
+        var items = await query
+            .OrderByDescending(h => h.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (items, total);
+    }
 
     public Task<List<OrderPhotoInfo>> GetPhotoInfosAsync(Guid orderId) =>
         _db.OrderPhotos.AsNoTracking()

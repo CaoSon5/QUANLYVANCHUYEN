@@ -8,6 +8,7 @@ public interface IOrderService
     // Người bán
     Task<List<WarehouseOptionDto>> GetPickupWarehousesAsync();
     decimal EstimateFee(decimal weightKg);
+    Task<List<ReceiverAreaDto>> GetDestinationOptionsAsync();
     Task<OrderDto> CreateAsync(Guid sellerId, OrderRequest request);
     Task<OrderDto> UpdateAsync(Guid sellerId, Guid orderId, OrderRequest request);
     Task<OrderDto> CancelAsync(Guid sellerId, Guid orderId, string? reason);
@@ -37,6 +38,8 @@ public interface IOrderService
     // Shipper: xem đơn chờ giao tại kho mình và tự nhận giao (FR52)
     Task<PagedResult<OrderDto>> ListDeliverableAsync(Guid shipperId, string? search, int page, int pageSize);
     Task<PagedResult<OrderDto>> ListMyDeliveriesAsync(Guid shipperId, string? status, string? search, int page, int pageSize);
+    Task<PagedResult<DeliveryHistoryDto>> ListMyDeliveryHistoryAsync(Guid shipperId, string? result, int page, int pageSize);
+    Task<DeliveryStatsDto> GetMyDeliveryStatsAsync(Guid shipperId, int days);
     Task<OrderDto> AcceptDeliveryAsync(Guid shipperId, Guid orderId);
 
     // Hoàn hàng về người bán (FR68): kho bàn giao hàng hoàn, người bán xác nhận đã nhận lại

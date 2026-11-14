@@ -8,23 +8,39 @@ const GROUPS = [
 ];
 
 // Biểu đồ tròn "Tình hình giao nhận".
-// Chưa truyền data -> chỉ hiện vòng tròn trống. Khi có dữ liệu thật, truyền vào:
-//   { total: 1248, percent: { success: 72, delivering: 14, pending: 9, failed: 5 } }
-export default function DeliveryDonut({ data }) {
+// Chưa truyền data -> chỉ hiện vòng tròn trống. Khi có dữ liệu thật, truyền vào một trong hai dạng:
+//   Dạng phần trăm: { total: 1248, percent: { success: 72, delivering: 14, pending: 9, failed: 5 } }
+//   Dạng số lượt:   { total: 12, counts: { success: 9, failed: 3 } }  -> chú giải hiện số lượt, không hiện phần trăm
+// Các prop tuỳ chọn khác (mặc định giữ giao diện cũ): title, subtitle, groups, centerLabel, emptyNote, doneNote
+export default function DeliveryDonut({
+  data,
+  title = 'Tình hình giao nhận',
+  subtitle = 'Cập nhật theo thời gian thực',
+  groups = GROUPS,
+  centerLabel = 'Tổng đơn',
+  emptyNote = 'Số liệu giao nhận sẽ hiển thị khi hệ thống có đơn hàng.',
+  doneNote = 'Cập nhật theo thời gian thực.',
+}) {
   const hasData = Boolean(data && data.total > 0);
+  const counts = hasData ? data.counts : undefined;
+
+  // Tỷ lệ (0 đến 100) để vẽ cung tròn
+  const share = (key) => (counts ? ((counts[key] ?? 0) / data.total) * 100 : data.percent?.[key] ?? 0);
+  const valueText = (key) => (counts ? `${counts[key] ?? 0} lượt` : `${data.percent?.[key] ?? 0}%`);
+
   let acc = 0;
 
   return (
     <div className="card">
-      <div className="card-title">Tình hình giao nhận</div>
-      <div className="card-sub">Cập nhật theo thời gian thực</div>
+      <div className="card-title">{title}</div>
+      <div className="card-sub">{subtitle}</div>
 
       <div className="donut-wrap">
         <div className="donut-box">
           <svg viewBox="0 0 42 42" className="donut">
             <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#eef2f7" strokeWidth="5" />
-            {hasData && GROUPS.map((g) => {
-              const p = data.percent?.[g.key] ?? 0;
+            {hasData && groups.map((g) => {
+              const p = share(g.key);
               const el = (
                 <circle
                   key={g.key} cx="21" cy="21" r="15.9155" fill="none"
@@ -39,23 +55,23 @@ export default function DeliveryDonut({ data }) {
           </svg>
           <div className="donut-center">
             <strong>{hasData ? data.total.toLocaleString('vi-VN') : '—'}</strong>
-            <span>Tổng đơn</span>
+            <span>{centerLabel}</span>
           </div>
         </div>
 
         <ul className="donut-legend">
-          {GROUPS.map((g) => (
+          {groups.map((g) => (
             <li key={g.key}>
               <i style={{ background: g.color }} />
               <span>{g.label}</span>
-              <b>{hasData ? `${data.percent?.[g.key] ?? 0}%` : '—'}</b>
+              <b>{hasData ? valueText(g.key) : '—'}</b>
             </li>
           ))}
         </ul>
       </div>
 
       <div className="notice notice-empty">
-        {hasData ? 'Cập nhật theo thời gian thực.' : 'Số liệu giao nhận sẽ hiển thị khi hệ thống có đơn hàng.'}
+        {hasData ? doneNote : emptyNote}
       </div>
     </div>
   );

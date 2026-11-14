@@ -72,6 +72,27 @@ public class AuthService : IAuthService
         return BuildResponse(user);
     }
 
+    // Người dùng tự sửa họ tên và số điện thoại của chính mình (không đụng email, vai trò, kho)
+    public async Task<AuthResponse> UpdateProfileAsync(Guid userId, UpdateProfileRequest request)
+    {
+        var user = await _users.GetByIdAsync(userId)
+                   ?? throw new AppException("Không tìm thấy tài khoản", 404);
+
+        var fullName = request.FullName.Trim();
+        var phone = request.Phone.Trim();
+
+        // Bỏ qua chính mình khi kiểm tra trùng, để giữ nguyên số cũ vẫn lưu được
+        if (await _users.PhoneExistsAsync(phone, userId))
+            throw new AppException("Số điện thoại đã được sử dụng", 409);
+
+        user.FullName = fullName;
+        user.Phone = phone;
+        await _users.UpdateAsync(user);
+
+        // Trả lại token và thông tin mới để frontend cập nhật tên ngay, không cần đăng nhập lại
+        return BuildResponse(user);
+    }
+
     public async Task<bool> NeedsSetupAsync() => !await _users.AnyAdminAsync();
 
     public async Task<AuthResponse> SetupAdminAsync(SetupAdminRequest request)
@@ -125,5 +146,6 @@ public class AuthService : IAuthService
         WarehouseId = u.WarehouseId,
         WarehouseCode = u.Warehouse?.Code,
         WarehouseName = u.Warehouse?.Name,
+        CreatedAt = u.CreatedAt,
     };
 }

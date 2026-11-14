@@ -4,6 +4,7 @@ import axiosClient from './axiosClient';
 export const orderApi = {
   // Người bán
   pickupWarehouses: () => axiosClient.get('/api/orders/pickup-warehouses').then((r) => r.data),
+  destinations: () => axiosClient.get('/api/orders/destinations').then((r) => r.data),
   fee: (weightKg) => axiosClient.get('/api/orders/fee', { params: { weightKg } }).then((r) => r.data),
   create: (data) => axiosClient.post('/api/orders', data).then((r) => r.data),
   update: (id, data) => axiosClient.put(`/api/orders/${id}`, data).then((r) => r.data),
@@ -53,6 +54,10 @@ export const deliveryApi = {
   available: (params) => axiosClient.get('/api/deliveries/available', { params }).then((r) => r.data),
   // status: 'accepted' (đã nhận, chờ lấy ở kho) | 'out_for_delivery' (đang đi giao)
   mine: (params) => axiosClient.get('/api/deliveries/mine', { params }).then((r) => r.data),
+  // Lịch sử giao hàng (result: 'delivered' | 'failed' | bỏ trống là tất cả)
+  // Thống kê cho Tổng quan (days: 7 | 30)
+  stats: (params) => axiosClient.get('/api/deliveries/stats', { params }).then((r) => r.data),
+  history: (params) => axiosClient.get('/api/deliveries/history', { params }).then((r) => r.data),
   accept: (id) => axiosClient.post(`/api/deliveries/${id}/accept`).then((r) => r.data),
   // Kết quả giao: gửi FormData (có thể kèm ảnh)
   deliver: (id, formData) => axiosClient.post(`/api/deliveries/${id}/delivered`, formData).then((r) => r.data),

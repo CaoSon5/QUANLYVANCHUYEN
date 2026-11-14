@@ -1,5 +1,7 @@
 // Đặt vào: D:\spreeexpress_supabase\spreeexpress\backend\SpreeExpress.Api\Services\Implementations\
 using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.RegularExpressions;
 using SpreeExpress.Api.DTOs;
 using SpreeExpress.Api.Entities;
@@ -48,18 +50,41 @@ public class OrderService : IOrderService
 
     public decimal EstimateFee(decimal weightKg) => _fees.Calculate(weightKg);
 
+    // Địa chỉ nhận: mỗi kho địa phương đang hoạt động là một quận/huyện, gắn với kho vùng (tỉnh/thành) của nó
+    public async Task<List<ReceiverAreaDto>> GetDestinationOptionsAsync()
+    {
+        var all = await _warehouses.GetActiveAsync();
+        var regions = all.Where(w => w.Type == WarehouseType.Regional).ToDictionary(w => w.Id);
+
+        return all
+            .Where(w => w.Type == WarehouseType.Local && w.ParentId.HasValue && regions.ContainsKey(w.ParentId.Value))
+            .Select(w =>
+            {
+                var region = regions[w.ParentId!.Value];
+                return new ReceiverAreaDto
+                {
+                    Id = w.Id, Code = w.Code, Name = w.Name,
+                    RegionId = region.Id, RegionCode = region.Code, RegionName = region.Name,
+                };
+            })
+            .OrderBy(d => d.RegionName).ThenBy(d => d.Name)
+            .ToList();
+    }
+
     public async Task<OrderDto> CreateAsync(Guid sellerId, OrderRequest r)
     {
         var warehouse = await ValidatePickupWarehouseAsync(r.PickupWarehouseId!.Value, currentWarehouseId: null);
+        var (destLocal, destRegion) = await ResolveDestinationAsync(r, currentDestinationId: null);
 
         var order = new Order
         {
-            Code = await GenerateCodeAsync(),
+            Code = await GenerateCodeAsync(destRegion, destLocal),
             Status = OrderStatus.PendingPickup,
             SellerId = sellerId,
             PickupWarehouseId = warehouse.Id,
         };
         Apply(order, r);
+        ApplyDestination(order, destLocal, destRegion);
 
         order.History.Add(new OrderStatusHistory
         {
@@ -79,7 +104,14 @@ public class OrderService : IOrderService
 
         await ValidatePickupWarehouseAsync(r.PickupWarehouseId!.Value, order.PickupWarehouseId);
         order.PickupWarehouseId = r.PickupWarehouseId.Value;
+
+        // Đổi địa chỉ nhận sang kho đích khác thì mã vận đơn cũng đổi theo (chỉ làm được khi đơn còn chờ lấy)
+        var (destLocal, destRegion) = await ResolveDestinationAsync(r, order.DestinationWarehouseId);
+        if (order.DestinationWarehouseId != destLocal.Id)
+            order.Code = await GenerateCodeAsync(destRegion, destLocal);
+
         Apply(order, r);
+        ApplyDestination(order, destLocal, destRegion);
         order.UpdatedAt = DateTime.UtcNow;
 
         _orders.AddHistory(new OrderStatusHistory
@@ -506,6 +538,82 @@ public class OrderService : IOrderService
             OldestFirst = true,
         };
         return await SearchAsync(filter, page, pageSize, canModifyForSeller: false);
+    }
+
+    // Lịch sử các lần giao của shipper (thành công, thất bại, hết lượt giao lại), mới nhất trước
+    public async Task<PagedResult<DeliveryHistoryDto>> ListMyDeliveryHistoryAsync(
+        Guid shipperId, string? result, int page, int pageSize)
+    {
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+
+        var (items, total) = await _orders.SearchShipperHistoryAsync(shipperId, result, page, pageSize);
+
+        return new PagedResult<DeliveryHistoryDto>
+        {
+            Items = items.Select(h => new DeliveryHistoryDto
+            {
+                Id = h.Id,
+                OrderId = h.OrderId,
+                OrderCode = h.Order?.Code ?? string.Empty,
+                Result = h.Status switch
+                {
+                    OrderStatus.Delivered => "delivered",
+                    OrderStatus.Returning => "returning",
+                    _ => "failed",
+                },
+                ReceiverName = h.Order?.ReceiverName ?? string.Empty,
+                ReceiverAddress = h.Order is null
+                    ? string.Empty
+                    : $"{h.Order.ReceiverAddress}, {h.Order.ReceiverDistrict}, {h.Order.ReceiverProvince}",
+                CodAmount = h.Order?.CodAmount ?? 0,
+                CodCollected = h.Status == OrderStatus.Delivered ? h.Order?.CodCollected : null,
+                Note = h.Note,
+                CreatedAt = h.CreatedAt,
+            }).ToList(),
+            Total = total,
+            Page = page,
+            PageSize = pageSize,
+        };
+    }
+
+    // Thống kê giao hàng của shipper theo ngày (7 hoặc 30 ngày gần nhất).
+    // Đếm theo lượt giao: mỗi đơn chỉ giao thành công một lần, còn mỗi lần giao thất bại là một lượt thất bại.
+    public async Task<DeliveryStatsDto> GetMyDeliveryStatsAsync(Guid shipperId, int days)
+    {
+        days = days == 30 ? 30 : 7;
+
+        // Ngày tính theo giờ Việt Nam (UTC+7)
+        var today = DateTime.UtcNow.AddHours(7).Date;
+        var firstDay = today.AddDays(-(days - 1));
+        var rows = await _orders.GetShipperHistoryRowsAsync(shipperId, firstDay.AddHours(-7));
+
+        var byDay = rows
+            .GroupBy(r => r.CreatedAt.AddHours(7).Date)
+            .ToDictionary(
+                g => g.Key,
+                g => (Delivered: g.Count(r => r.Status == OrderStatus.Delivered),
+                      Failed: g.Count(r => r.Status != OrderStatus.Delivered)));
+
+        var daily = Enumerable.Range(0, days).Select(i =>
+        {
+            var d = firstDay.AddDays(i);
+            byDay.TryGetValue(d, out var c);
+            return new DeliveryDayDto
+            {
+                Date = d.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
+                Delivered = c.Delivered,
+                Failed = c.Failed,
+            };
+        }).ToList();
+
+        return new DeliveryStatsDto
+        {
+            Days = days,
+            Delivered = daily.Sum(x => x.Delivered),
+            Failed = daily.Sum(x => x.Failed),
+            Daily = daily,
+        };
     }
 
     // FR52: shipper tự chọn đơn muốn giao
@@ -940,8 +1048,6 @@ public class OrderService : IOrderService
         order.ReceiverName = r.ReceiverName.Trim();
         order.ReceiverPhone = r.ReceiverPhone.Trim();
         order.ReceiverAddress = r.ReceiverAddress.Trim();
-        order.ReceiverDistrict = r.ReceiverDistrict.Trim();
-        order.ReceiverProvince = r.ReceiverProvince.Trim();
         order.ItemDescription = r.ItemDescription.Trim();
         order.Quantity = r.Quantity;
         order.WeightKg = r.WeightKg;
@@ -951,12 +1057,83 @@ public class OrderService : IOrderService
         order.Note = string.IsNullOrWhiteSpace(r.Note) ? null : r.Note.Trim();
     }
 
-    // Mã vận đơn: SPR + ngày (giờ Việt Nam) + số thứ tự 5 chữ số, ví dụ SPR25062400128
-    private async Task<string> GenerateCodeAsync()
+    // Mã vận đơn: {mã kho vùng đích}-{mã kho đích}-SPR{6 ký tự ngẫu nhiên}, ví dụ HANOI-BD-SPR7K4Q9X.
+    // Chỉ để người đọc biết đơn đi đâu; gộp bao và điều phối dựa vào Order.DestinationWarehouseId.
+    private async Task<string> GenerateCodeAsync(Warehouse region, Warehouse local)
     {
-        var number = await _orders.NextCodeNumberAsync();
-        var date = DateTime.UtcNow.AddHours(7).ToString("yyMMdd");
-        return $"SPR{date}{number:D5}";
+        for (var i = 0; i < 10; i++)
+        {
+            var code = $"{region.Code}-{local.Code}-SPR{RandomSuffix(6)}";
+            if (await _orders.GetByCodeAsync(code) is null) return code;
+        }
+        throw new AppException("Không tạo được mã vận đơn, vui lòng thử lại", 500);
+    }
+
+    // Bỏ các ký tự dễ nhầm: 0/O, 1/I/L
+    private const string CodeAlphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+
+    private static string RandomSuffix(int length)
+    {
+        var sb = new StringBuilder(length);
+        for (var i = 0; i < length; i++)
+            sb.Append(CodeAlphabet[RandomNumberGenerator.GetInt32(CodeAlphabet.Length)]);
+        return sb.ToString();
+    }
+
+    // Tìm kho đích từ địa chỉ nhận: ưu tiên kho người bán chọn; form cũ chỉ gửi tên quận thì dò theo tên kho
+    private async Task<(Warehouse Local, Warehouse Region)> ResolveDestinationAsync(OrderRequest r, Guid? currentDestinationId)
+    {
+        Warehouse? local = null;
+
+        if (r.DestinationWarehouseId.HasValue)
+        {
+            local = await _warehouses.GetByIdAsync(r.DestinationWarehouseId.Value);
+        }
+        else
+        {
+            var district = Fold(r.ReceiverDistrict);
+            if (district.Length > 0)
+            {
+                var matches = (await _warehouses.GetActiveAsync())
+                    .Where(w => w.Type == WarehouseType.Local && Fold(w.Name) == district)
+                    .ToList();
+                if (matches.Count == 1) local = matches[0];
+            }
+        }
+
+        if (local is null || local.Type != WarehouseType.Local)
+            throw new AppException("Chưa xác định được kho giao hàng cho địa chỉ người nhận, vui lòng chọn lại tỉnh/thành và quận/huyện", 400);
+        if (local.Id != currentDestinationId && !local.IsActive)
+            throw new AppException("Khu vực nhận hàng này tạm ngừng hoạt động", 400);
+        if (!local.ParentId.HasValue)
+            throw new AppException("Kho giao hàng chưa thuộc kho vùng nào, vui lòng liên hệ quản trị viên", 400);
+
+        var region = await _warehouses.GetByIdAsync(local.ParentId.Value)
+                     ?? throw new AppException("Không tìm thấy kho vùng của khu vực nhận hàng", 400);
+        return (local, region);
+    }
+
+    // Điền kho đích, quận/huyện và tỉnh/thành (hiển thị) từ kho đích.
+    // Tỉnh/thành lấy phần cuối của địa chỉ kho ("Ba Đình, Hà Nội" -> "Hà Nội"), không có thì dùng tên kho vùng.
+    private static void ApplyDestination(Order order, Warehouse local, Warehouse region)
+    {
+        order.DestinationWarehouseId = local.Id;
+        order.DestinationWarehouse = null;
+        order.ReceiverDistrict = local.Name;
+
+        var lastPart = local.Address.Split(',').Select(p => p.Trim()).LastOrDefault(p => p.Length > 0);
+        order.ReceiverProvince = !string.IsNullOrWhiteSpace(lastPart) && lastPart != local.Name ? lastPart : region.Name;
+    }
+
+    // Bỏ dấu, hạ chữ thường để so khớp tên quận/huyện
+    private static string Fold(string? s)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return string.Empty;
+        var d = s.Trim().ToLowerInvariant().Replace('đ', 'd').Normalize(NormalizationForm.FormD);
+        var sb = new StringBuilder();
+        foreach (var c in d)
+            if (CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark) sb.Append(c);
+        return sb.ToString();
     }
 
     // Shipper chỉ thấy đơn chờ ở kho mình hoặc đơn mình đã nhận; Admin, Điều phối xem được mọi đơn
@@ -1016,6 +1193,9 @@ public class OrderService : IOrderService
         PickupWarehouseCode = o.PickupWarehouse?.Code ?? string.Empty,
         PickupWarehouseName = o.PickupWarehouse?.Name ?? string.Empty,
         PickupWarehouseAddress = o.PickupWarehouse?.Address ?? string.Empty,
+        DestinationWarehouseId = o.DestinationWarehouseId,
+        DestinationWarehouseCode = o.DestinationWarehouse?.Code,
+        DestinationWarehouseName = o.DestinationWarehouse?.Name,
         ShipperId = o.PickupShipperId,
         ShipperName = o.PickupShipper?.FullName,
         ShipperPhone = o.PickupShipper?.Phone,

@@ -46,6 +46,13 @@ public class OrderPhotoInfo
     public string? UploadedByName { get; set; }
 }
 
+// Một lượt giao của shipper (dùng để thống kê, không kèm dữ liệu thừa)
+public class ShipperHistoryRow
+{
+    public OrderStatus Status { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
 public interface IOrderRepository
 {
     Task<long> NextCodeNumberAsync();
@@ -66,6 +73,13 @@ public interface IOrderRepository
     Task<int> CountDeliveryAsync(Guid shipperId, OrderStatus status);      // đơn giao của một shipper theo trạng thái
     Task<int> CountPendingPickupAsync(Guid warehouseId);
     Task<int> CountAcceptedPickupAsync(Guid shipperId);
+
+    // Các lượt giao (thành công, thất bại) của shipper từ một thời điểm, để thống kê theo ngày
+    Task<List<ShipperHistoryRow>> GetShipperHistoryRowsAsync(Guid shipperId, DateTime fromUtc);
+
+    // Lịch sử giao hàng của shipper (từ nhật ký trạng thái), result: delivered | failed | null (tất cả)
+    Task<(List<OrderStatusHistory> Items, int Total)> SearchShipperHistoryAsync(
+        Guid shipperId, string? result, int page, int pageSize);
 
     Task AddAsync(Order order);
     void AddHistory(OrderStatusHistory history);

@@ -25,6 +25,12 @@ public class OrdersController : ControllerBase
     public async Task<ActionResult<List<WarehouseOptionDto>>> PickupWarehouses() =>
         Ok(await _orders.GetPickupWarehousesAsync());
 
+    // Danh sách quận/huyện (kho địa phương) nhóm theo kho vùng, để người bán chọn địa chỉ nhận
+    [Authorize(Roles = "Seller")]
+    [HttpGet("destinations")]
+    public async Task<ActionResult<List<ReceiverAreaDto>>> Destinations() =>
+        Ok(await _orders.GetDestinationOptionsAsync());
+
     [Authorize(Roles = "Seller")]
     [HttpGet("fee")]
     public ActionResult Fee([FromQuery] decimal weightKg) =>

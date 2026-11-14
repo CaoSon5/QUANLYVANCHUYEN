@@ -6,6 +6,8 @@ export const authApi = {
   changePassword: (data) =>
     axiosClient.post('/api/auth/change-password', data).then((r) => r.data),
   me: () => axiosClient.get('/api/auth/me').then((r) => r.data),
+  // Tự sửa hồ sơ: { fullName, phone } -> { token, user }
+  updateProfile: (data) => axiosClient.put('/api/auth/me', data).then((r) => r.data),
 
   // Thiết lập lần đầu (tạo admin đầu tiên)
   setupStatus: () => axiosClient.get('/api/setup/status').then((r) => r.data),

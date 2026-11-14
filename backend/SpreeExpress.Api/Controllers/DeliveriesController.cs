@@ -37,6 +37,19 @@ public class DeliveriesController : ControllerBase
         [FromQuery] int pageSize = 10) =>
         Ok(await _orders.ListMyDeliveriesAsync(UserId, status, search, page, pageSize));
 
+    // Lịch sử giao hàng của mình. result: delivered | failed (bỏ trống là tất cả)
+    [HttpGet("history")]
+    public async Task<ActionResult<PagedResult<DeliveryHistoryDto>>> History(
+        [FromQuery] string? result,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10) =>
+        Ok(await _orders.ListMyDeliveryHistoryAsync(UserId, result, page, pageSize));
+
+    // Thống kê cho trang Tổng quan của shipper. days: 7 | 30
+    [HttpGet("stats")]
+    public async Task<ActionResult<DeliveryStatsDto>> Stats([FromQuery] int days = 7) =>
+        Ok(await _orders.GetMyDeliveryStatsAsync(UserId, days));
+
     [HttpPost("{id:guid}/accept")]
     public async Task<ActionResult<OrderDto>> Accept(Guid id) =>
         Ok(await _orders.AcceptDeliveryAsync(UserId, id));

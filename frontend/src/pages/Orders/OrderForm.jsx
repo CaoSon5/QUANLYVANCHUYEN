@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { orderApi } from '../../api/orderApi';
 import { getErrorMessage } from '../../api/authApi';
 import { useAuth } from '../../context/AuthContext';
@@ -20,8 +20,7 @@ export default function OrderForm({ mode, order, onSaved, onCancel }) {
     receiverName: order?.receiverName ?? '',
     receiverPhone: order?.receiverPhone ?? '',
     receiverAddress: order?.receiverAddress ?? '',
-    receiverDistrict: order?.receiverDistrict ?? '',
-    receiverProvince: order?.receiverProvince ?? '',
+    destinationWarehouseId: order?.destinationWarehouseId ?? '',
     itemDescription: order?.itemDescription ?? '',
     quantity: String(order?.quantity ?? 1),
     weightKg: String(order?.weightKg ?? 1),
@@ -31,6 +30,8 @@ export default function OrderForm({ mode, order, onSaved, onCancel }) {
     pickupWarehouseId: order?.pickupWarehouseId ?? '',
   });
   const [warehouses, setWarehouses] = useState([]);
+  const [destinations, setDestinations] = useState([]); // quận/huyện (kho địa phương) kèm tỉnh/thành (kho vùng)
+  const [regionId, setRegionId] = useState('');
   const [fee, setFee] = useState(order?.shippingFee ?? null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -39,7 +40,23 @@ export default function OrderForm({ mode, order, onSaved, onCancel }) {
 
   useEffect(() => {
     orderApi.pickupWarehouses().then(setWarehouses).catch(() => {});
+    orderApi.destinations().then(setDestinations).catch(() => {});
   }, []);
+
+  // Danh sách tỉnh/thành (không trùng) và quận/huyện thuộc tỉnh đang chọn
+  const regions = useMemo(() => {
+    const map = new Map();
+    destinations.forEach((d) => { if (!map.has(d.regionId)) map.set(d.regionId, d.regionName); });
+    return [...map].map(([id, name]) => ({ id, name }));
+  }, [destinations]);
+  const districts = destinations.filter((d) => d.regionId === regionId);
+
+  // Khi sửa đơn: tự chọn lại tỉnh/thành của quận/huyện đã lưu
+  useEffect(() => {
+    if (regionId || !form.destinationWarehouseId) return;
+    const d = destinations.find((x) => x.id === form.destinationWarehouseId);
+    if (d) setRegionId(d.regionId);
+  }, [destinations, form.destinationWarehouseId, regionId]);
 
   // Tính phí dự kiến theo cân nặng (đợi 0,4 giây sau khi ngừng gõ)
   useEffect(() => {
@@ -66,8 +83,6 @@ export default function OrderForm({ mode, order, onSaved, onCancel }) {
       ['senderAddress', 'Vui lòng nhập địa chỉ lấy hàng'],
       ['receiverName', 'Vui lòng nhập tên người nhận'],
       ['receiverAddress', 'Vui lòng nhập địa chỉ người nhận'],
-      ['receiverDistrict', 'Vui lòng nhập quận/huyện người nhận'],
-      ['receiverProvince', 'Vui lòng nhập tỉnh/thành người nhận'],
       ['itemDescription', 'Vui lòng nhập nội dung hàng hóa'],
     ];
     for (const [field, msg] of required) if (!form[field].trim()) return msg;
@@ -81,6 +96,8 @@ export default function OrderForm({ mode, order, onSaved, onCancel }) {
     if (!(w >= 0.01 && w <= 1000)) return 'Cân nặng phải từ 0,01 đến 1000 kg';
     if (!(Number(form.declaredValue) >= 0)) return 'Giá trị hàng không hợp lệ';
     if (!(Number(form.codAmount) >= 0)) return 'Tiền thu hộ (COD) không hợp lệ';
+    if (!regionId) return 'Vui lòng chọn tỉnh/thành người nhận';
+    if (!form.destinationWarehouseId) return 'Vui lòng chọn quận/huyện người nhận';
     if (!form.pickupWarehouseId) return 'Vui lòng chọn kho lấy hàng';
     return '';
   };
@@ -100,8 +117,7 @@ export default function OrderForm({ mode, order, onSaved, onCancel }) {
         receiverName: form.receiverName.trim(),
         receiverPhone: cleanPhone(form.receiverPhone),
         receiverAddress: form.receiverAddress.trim(),
-        receiverDistrict: form.receiverDistrict.trim(),
-        receiverProvince: form.receiverProvince.trim(),
+        destinationWarehouseId: form.destinationWarehouseId,
         itemDescription: form.itemDescription.trim(),
         quantity: Number(form.quantity),
         weightKg: Number(form.weightKg),
@@ -162,12 +178,25 @@ export default function OrderForm({ mode, order, onSaved, onCancel }) {
             <input className="form-input" value={form.receiverAddress} onChange={set('receiverAddress')} placeholder="Số nhà, đường, phường/xã" />
           </div>
           <div>
-            <label className="form-label">Quận / Huyện</label>
-            <input className="form-input" value={form.receiverDistrict} onChange={set('receiverDistrict')} placeholder="Quận 7" />
+            <label className="form-label">Tỉnh / Thành phố</label>
+            <select
+              className="form-input" value={regionId}
+              onChange={(e) => { setRegionId(e.target.value); setForm({ ...form, destinationWarehouseId: '' }); }}
+            >
+              <option value="">— Chọn tỉnh/thành —</option>
+              {regions.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+            </select>
           </div>
           <div>
-            <label className="form-label">Tỉnh / Thành phố</label>
-            <input className="form-input" value={form.receiverProvince} onChange={set('receiverProvince')} placeholder="TP. Hồ Chí Minh" />
+            <label className="form-label">Quận / Huyện</label>
+            <select
+              className="form-input" value={form.destinationWarehouseId} onChange={set('destinationWarehouseId')}
+              disabled={!regionId}
+            >
+              <option value="">— Chọn quận/huyện —</option>
+              {districts.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </select>
+            {destinations.length === 0 && <div className="form-hint">Hệ thống chưa có khu vực nhận hàng nào. Vui lòng liên hệ quản lý.</div>}
           </div>
         </div>
       </div>
