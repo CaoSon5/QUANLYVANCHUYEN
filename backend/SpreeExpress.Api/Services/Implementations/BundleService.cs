@@ -255,6 +255,39 @@ public class BundleService : IBundleService
         return await DetailAsync(bundle.Id);
     }
 
+    // FR39: mở bao đã đến kho đích. Các đơn bên trong nhập kho, shipper của kho này giao như thường.
+    public async Task<BundleDto> OpenAsync(Guid staffId, Guid bundleId)
+    {
+        var staff = await GetStaffAsync(staffId);
+        var bundle = await GetOwnTrackedAsync(staff, bundleId);
+
+        if (bundle.Status != BundleStatus.Received)
+            throw new AppException("Chỉ mở được bao đã đến kho đích và đã được kho nhận", 409);
+
+        var now = DateTime.UtcNow;
+        foreach (var order in bundle.Orders)
+        {
+            order.Status = OrderStatus.InWarehouse;
+            order.CurrentWarehouseId = staff.WarehouseId;
+            order.ReceivedAt = now;   // tính thời gian lưu kho từ lúc nhập kho đích
+            order.UpdatedAt = now;
+
+            _orders.AddHistory(new OrderStatusHistory
+            {
+                OrderId = order.Id,
+                Status = OrderStatus.InWarehouse,
+                Note = $"Đã mở bao {bundle.Code}, nhập kho {bundle.Current?.Code}",
+                ActorUserId = staffId,
+            });
+        }
+
+        bundle.Status = BundleStatus.Opened;
+        bundle.OpenedAt = now;
+
+        await _bundles.SaveAsync();
+        return await DetailAsync(bundle.Id);
+    }
+
     // ================= XEM, TÌM KIẾM (FR20, FR40) =================
 
     public async Task<PagedResult<BundleDto>> ListAsync(
@@ -303,7 +336,9 @@ public class BundleService : IBundleService
         var allowed = viewer.Role switch
         {
             UserRole.Admin or UserRole.Dispatcher => true,
-            UserRole.Warehouse => viewer.WarehouseId.HasValue && bundle.CurrentWarehouseId == viewer.WarehouseId,
+            UserRole.Warehouse => viewer.WarehouseId.HasValue
+                                  && (bundle.CurrentWarehouseId == viewer.WarehouseId
+                                      || bundle.DestinationWarehouseId == viewer.WarehouseId),
             _ => false,
         };
         if (!allowed) throw new AppException("Không tìm thấy bao hàng", 404);

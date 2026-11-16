@@ -1,3 +1,4 @@
+// Đặt vào: D:\spreeexpress_supabase\spreeexpress\backend\SpreeExpress.Api\DTOs\
 using System.ComponentModel.DataAnnotations;
 
 namespace SpreeExpress.Api.DTOs;
@@ -14,6 +15,8 @@ public class UserDetailDto
     public Guid? WarehouseId { get; set; }
     public string? WarehouseCode { get; set; }
     public string? WarehouseName { get; set; }
+    public string? VehiclePlate { get; set; }          // chỉ có với tài xế
+    public decimal? VehicleCapacityKg { get; set; }    // chỉ có với tài xế
     public DateTime CreatedAt { get; set; }
 }
 
@@ -56,6 +59,13 @@ public class CreateUserRequest
 
     // Bắt buộc với nhân viên kho và shipper; vai trò khác bỏ trống
     public Guid? WarehouseId { get; set; }
+
+    // Chỉ dùng cho tài xế: biển số và tải trọng tối đa của xe (kg)
+    [StringLength(20, ErrorMessage = "Biển số xe tối đa 20 ký tự")]
+    public string? VehiclePlate { get; set; }
+
+    [Range(1, 100000, ErrorMessage = "Tải trọng xe phải từ 1 đến 100.000 kg")]
+    public decimal? VehicleCapacityKg { get; set; }
 }
 
 public class UpdateUserRequest
@@ -77,6 +87,13 @@ public class UpdateUserRequest
 
     // Bắt buộc với nhân viên kho và shipper; vai trò khác bỏ trống
     public Guid? WarehouseId { get; set; }
+
+    // Chỉ dùng cho tài xế: biển số và tải trọng tối đa của xe (kg)
+    [StringLength(20, ErrorMessage = "Biển số xe tối đa 20 ký tự")]
+    public string? VehiclePlate { get; set; }
+
+    [Range(1, 100000, ErrorMessage = "Tải trọng xe phải từ 1 đến 100.000 kg")]
+    public decimal? VehicleCapacityKg { get; set; }
 }
 
 public class SetStatusRequest

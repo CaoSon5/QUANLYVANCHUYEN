@@ -75,6 +75,12 @@ public class BundlesController : ControllerBase
     public async Task<ActionResult<BundleDto>> Reopen(Guid id) =>
         Ok(await _bundles.ReopenAsync(UserId, id));
 
+    // Mở bao đã đến kho đích (FR39)
+    [Authorize(Roles = "Warehouse")]
+    [HttpPost("{id:guid}/open")]
+    public async Task<ActionResult<BundleDto>> Open(Guid id) =>
+        Ok(await _bundles.OpenAsync(UserId, id));
+
     [Authorize(Roles = "Warehouse")]
     [HttpPost("{id:guid}/cancel")]
     public async Task<ActionResult<BundleDto>> Cancel(Guid id) =>

@@ -65,6 +65,18 @@ public class OrdersController : ControllerBase
     public async Task<ActionResult<OrderDto>> Cancel(Guid id, CancelOrderRequest request) =>
         Ok(await _orders.CancelAsync(UserId, id, request.Reason));
 
+    // FR27: shipper có thể được phân công cho đơn này (cùng kho)
+    [Authorize(Roles = "Admin,Dispatcher")]
+    [HttpGet("{id:guid}/assignable-shippers")]
+    public async Task<ActionResult<List<AssignableShipperDto>>> AssignableShippers(Guid id) =>
+        Ok(await _orders.ListAssignableShippersAsync(UserId, id));
+
+    // FR27: phân công shipper thủ công
+    [Authorize(Roles = "Admin,Dispatcher")]
+    [HttpPost("{id:guid}/assign")]
+    public async Task<ActionResult<OrderDto>> Assign(Guid id, AssignOrderRequest request) =>
+        Ok(await _orders.ManualAssignAsync(UserId, id, request.ShipperId!.Value));
+
     // FR09: đơn đang nằm trong một kho (xem chi tiết kho)
     [Authorize(Roles = "Admin,Dispatcher")]
     [HttpGet("by-warehouse/{warehouseId:guid}")]

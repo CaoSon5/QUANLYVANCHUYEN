@@ -50,6 +50,10 @@ public interface IOrderService
     Task<PublicTrackingDto> GetPublicTrackingAsync(string code);
     Task<List<PublicTrackingSummaryDto>> FindPublicByPhoneAsync(string phone);
 
+    // FR27: Điều phối viên, Admin phân công shipper thủ công (lấy hàng hoặc giao hàng) trong trường hợp ngoại lệ
+    Task<List<AssignableShipperDto>> ListAssignableShippersAsync(Guid actorId, Guid orderId);
+    Task<OrderDto> ManualAssignAsync(Guid actorId, Guid orderId, Guid shipperId);
+
     // FR09: các đơn đang nằm trong một kho (Admin, Điều phối viên xem chi tiết kho)
     Task<PagedResult<OrderDto>> ListWarehouseStockAsync(Guid warehouseId, string? search, int page, int pageSize);
 

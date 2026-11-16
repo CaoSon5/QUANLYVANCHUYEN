@@ -30,6 +30,8 @@ namespace SpreeExpress.Api.Migrations
 
             modelBuilder.HasSequence("settlement_code_seq");
 
+            modelBuilder.HasSequence("trip_code_seq");
+
             modelBuilder.Entity("SpreeExpress.Api.Entities.Bundle", b =>
                 {
                     b.Property<Guid>("Id")
@@ -53,15 +55,30 @@ namespace SpreeExpress.Api.Migrations
                     b.Property<Guid>("DestinationWarehouseId")
                         .HasColumnType("uuid");
 
+                    b.Property<int>("LoadSeq")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("LoadedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("LoadedAtWarehouseId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Note")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("OpenedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("OrderCount")
                         .HasColumnType("integer");
 
                     b.Property<Guid>("OriginWarehouseId")
                         .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ReceivedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime?>("SealedAt")
                         .HasColumnType("timestamp with time zone");
@@ -78,6 +95,9 @@ namespace SpreeExpress.Api.Migrations
                         .HasPrecision(12, 2)
                         .HasColumnType("numeric(12,2)");
 
+                    b.Property<Guid?>("TripId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Code")
@@ -87,7 +107,11 @@ namespace SpreeExpress.Api.Migrations
 
                     b.HasIndex("DestinationWarehouseId");
 
+                    b.HasIndex("LoadedAtWarehouseId");
+
                     b.HasIndex("OriginWarehouseId");
+
+                    b.HasIndex("TripId");
 
                     b.HasIndex("CurrentWarehouseId", "Status");
 
@@ -181,8 +205,8 @@ namespace SpreeExpress.Api.Migrations
 
                     b.Property<string>("Code")
                         .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)");
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -204,6 +228,9 @@ namespace SpreeExpress.Api.Migrations
                         .HasColumnType("integer");
 
                     b.Property<Guid?>("DeliveryShipperId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("DestinationWarehouseId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime?>("DispatchedAt")
@@ -335,6 +362,8 @@ namespace SpreeExpress.Api.Migrations
                     b.HasIndex("SettlementId");
 
                     b.HasIndex("CurrentWarehouseId", "Status");
+
+                    b.HasIndex("DestinationWarehouseId", "Status");
 
                     b.HasIndex("PickupWarehouseId", "Status");
 
@@ -517,6 +546,162 @@ namespace SpreeExpress.Api.Migrations
                     b.ToTable("settlement_adjustments", (string)null);
                 });
 
+            modelBuilder.Entity("SpreeExpress.Api.Entities.Trip", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("CapacityKg")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CurrentWarehouseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("DriverId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("NextWarehouseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("PickupWarehouseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("VehiclePlate")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("CreatedById");
+
+                    b.HasIndex("CurrentWarehouseId");
+
+                    b.HasIndex("NextWarehouseId");
+
+                    b.HasIndex("PickupWarehouseId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("DriverId", "Status");
+
+                    b.ToTable("trips", (string)null);
+                });
+
+            modelBuilder.Entity("SpreeExpress.Api.Entities.TripDiscrepancy", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("BundleCode")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<Guid?>("BundleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("ReportedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TripId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReportedById");
+
+                    b.HasIndex("TripId");
+
+                    b.HasIndex("WarehouseId");
+
+                    b.ToTable("trip_discrepancies", (string)null);
+                });
+
+            modelBuilder.Entity("SpreeExpress.Api.Entities.TripStop", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("ArrivedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DepartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ReceiveFinishedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Seq")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TripId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WarehouseId");
+
+                    b.HasIndex("TripId", "Seq")
+                        .IsUnique();
+
+                    b.ToTable("trip_stops", (string)null);
+                });
+
             modelBuilder.Entity("SpreeExpress.Api.Entities.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -554,6 +739,14 @@ namespace SpreeExpress.Api.Migrations
 
                     b.Property<string>("Role")
                         .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<decimal?>("VehicleCapacityKg")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<string>("VehiclePlate")
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
@@ -638,11 +831,21 @@ namespace SpreeExpress.Api.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("SpreeExpress.Api.Entities.Warehouse", "LoadedAtWarehouse")
+                        .WithMany()
+                        .HasForeignKey("LoadedAtWarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("SpreeExpress.Api.Entities.Warehouse", "Origin")
                         .WithMany()
                         .HasForeignKey("OriginWarehouseId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("SpreeExpress.Api.Entities.Trip", "Trip")
+                        .WithMany("Bundles")
+                        .HasForeignKey("TripId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("CreatedBy");
 
@@ -650,7 +853,11 @@ namespace SpreeExpress.Api.Migrations
 
                     b.Navigation("Destination");
 
+                    b.Navigation("LoadedAtWarehouse");
+
                     b.Navigation("Origin");
+
+                    b.Navigation("Trip");
                 });
 
             modelBuilder.Entity("SpreeExpress.Api.Entities.CodRemittance", b =>
@@ -693,6 +900,11 @@ namespace SpreeExpress.Api.Migrations
                         .HasForeignKey("DeliveryShipperId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("SpreeExpress.Api.Entities.Warehouse", "DestinationWarehouse")
+                        .WithMany()
+                        .HasForeignKey("DestinationWarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("SpreeExpress.Api.Entities.User", "PickupShipper")
                         .WithMany()
                         .HasForeignKey("PickupShipperId")
@@ -722,6 +934,8 @@ namespace SpreeExpress.Api.Migrations
                     b.Navigation("CurrentWarehouse");
 
                     b.Navigation("DeliveryShipper");
+
+                    b.Navigation("DestinationWarehouse");
 
                     b.Navigation("PickupShipper");
 
@@ -804,6 +1018,93 @@ namespace SpreeExpress.Api.Migrations
                     b.Navigation("Settlement");
                 });
 
+            modelBuilder.Entity("SpreeExpress.Api.Entities.Trip", b =>
+                {
+                    b.HasOne("SpreeExpress.Api.Entities.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedById")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SpreeExpress.Api.Entities.Warehouse", "Current")
+                        .WithMany()
+                        .HasForeignKey("CurrentWarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SpreeExpress.Api.Entities.User", "Driver")
+                        .WithMany()
+                        .HasForeignKey("DriverId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SpreeExpress.Api.Entities.Warehouse", "Next")
+                        .WithMany()
+                        .HasForeignKey("NextWarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SpreeExpress.Api.Entities.Warehouse", "Pickup")
+                        .WithMany()
+                        .HasForeignKey("PickupWarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CreatedBy");
+
+                    b.Navigation("Current");
+
+                    b.Navigation("Driver");
+
+                    b.Navigation("Next");
+
+                    b.Navigation("Pickup");
+                });
+
+            modelBuilder.Entity("SpreeExpress.Api.Entities.TripDiscrepancy", b =>
+                {
+                    b.HasOne("SpreeExpress.Api.Entities.User", "ReportedBy")
+                        .WithMany()
+                        .HasForeignKey("ReportedById")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SpreeExpress.Api.Entities.Trip", "Trip")
+                        .WithMany("Discrepancies")
+                        .HasForeignKey("TripId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SpreeExpress.Api.Entities.Warehouse", "Warehouse")
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ReportedBy");
+
+                    b.Navigation("Trip");
+
+                    b.Navigation("Warehouse");
+                });
+
+            modelBuilder.Entity("SpreeExpress.Api.Entities.TripStop", b =>
+                {
+                    b.HasOne("SpreeExpress.Api.Entities.Trip", "Trip")
+                        .WithMany("Stops")
+                        .HasForeignKey("TripId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SpreeExpress.Api.Entities.Warehouse", "Warehouse")
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Trip");
+
+                    b.Navigation("Warehouse");
+                });
+
             modelBuilder.Entity("SpreeExpress.Api.Entities.User", b =>
                 {
                     b.HasOne("SpreeExpress.Api.Entities.Warehouse", "Warehouse")
@@ -844,6 +1145,15 @@ namespace SpreeExpress.Api.Migrations
                     b.Navigation("Adjustments");
 
                     b.Navigation("Orders");
+                });
+
+            modelBuilder.Entity("SpreeExpress.Api.Entities.Trip", b =>
+                {
+                    b.Navigation("Bundles");
+
+                    b.Navigation("Discrepancies");
+
+                    b.Navigation("Stops");
                 });
 
             modelBuilder.Entity("SpreeExpress.Api.Entities.Warehouse", b =>

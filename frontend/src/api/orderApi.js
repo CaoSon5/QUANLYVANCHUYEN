@@ -22,6 +22,10 @@ export const orderApi = {
   listByWarehouse: (warehouseId, params) =>
     axiosClient.get(`/api/orders/by-warehouse/${warehouseId}`, { params }).then((r) => r.data),
 
+  // Điều phối viên, Admin phân công shipper thủ công (FR27)
+  assignableShippers: (id) => axiosClient.get(`/api/orders/${id}/assignable-shippers`).then((r) => r.data),
+  assign: (id, shipperId) => axiosClient.post(`/api/orders/${id}/assign`, { shipperId }).then((r) => r.data),
+
   // Người bán xác nhận đã nhận lại hàng hoàn (FR68)
   confirmReturn: (id) => axiosClient.post(`/api/orders/${id}/confirm-return`).then((r) => r.data),
 

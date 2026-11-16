@@ -4,6 +4,7 @@ import PageHeader from '../../components/common/PageHeader';
 import DateRangeBar, { defaultRange } from './DateRangeBar';
 import OrderStatusReport from './OrderStatusReport';
 import ShipperReport from './ShipperReport';
+import DriverReport from './DriverReport';
 import InventoryReport from './InventoryReport';
 import CodReport from './CodReport';
 import '../Accounts/accounts.css';
@@ -12,6 +13,7 @@ import './reports.css';
 const TABS = [
   { key: 'orders', label: 'Đơn hàng & tỉ lệ giao' },
   { key: 'shippers', label: 'Hiệu suất shipper' },
+  { key: 'drivers', label: 'Hiệu suất tài xế' },
   { key: 'inventory', label: 'Tồn kho' },
   { key: 'cod', label: 'Đối soát COD' },
 ];
@@ -43,6 +45,7 @@ export default function OpsReportsPage() {
 
       {tab === 'orders' && <OrderStatusReport range={range} />}
       {tab === 'shippers' && <ShipperReport range={range} />}
+      {tab === 'drivers' && <DriverReport range={range} />}
       {tab === 'inventory' && <InventoryReport />}
       {tab === 'cod' && <CodReport range={range} />}
     </>

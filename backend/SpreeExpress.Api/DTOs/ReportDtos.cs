@@ -126,3 +126,32 @@ public class CodReportDto
 
     public List<ShipperHoldingDto> Holdings { get; set; } = new();
 }
+
+// ===== FR16: hiệu suất từng tài xế =====
+
+public class DriverPerformanceDto
+{
+    public Guid DriverId { get; set; }
+    public string FullName { get; set; } = string.Empty;
+    public string Phone { get; set; } = string.Empty;
+    public string? VehiclePlate { get; set; }
+    public decimal? CapacityKg { get; set; }
+    public bool IsActive { get; set; }
+    public int TripsCompleted { get; set; }              // chuyến hoàn thành trong kỳ
+    public int TripsInProgress { get; set; }             // chuyến đang chạy hiện tại
+    public int BundlesDelivered { get; set; }            // bao đã giao tới kho đích
+    public decimal WeightDeliveredKg { get; set; }
+    public int BundlesMissing { get; set; }              // bao bị báo thất lạc
+    public decimal? AverageTripHours { get; set; }       // từ lúc xuất phát đến lúc hoàn thành
+}
+
+public class DriverReportDto
+{
+    public DateOnly From { get; set; }
+    public DateOnly To { get; set; }
+    public List<DriverPerformanceDto> Drivers { get; set; } = new();
+    public int TotalTrips { get; set; }
+    public int TotalBundles { get; set; }
+    public decimal TotalWeightKg { get; set; }
+    public int TotalMissing { get; set; }
+}

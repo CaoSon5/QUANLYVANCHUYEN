@@ -103,6 +103,51 @@ public class ReportRepository : IReportRepository
         }).ToList();
     }
 
+    // ================= FR16: tài xế =================
+
+    public async Task<List<DriverInfo>> GetDriversAsync()
+    {
+        var users = await _db.Users.AsNoTracking()
+            .Where(u => u.Role == UserRole.Driver)
+            .OrderBy(u => u.FullName)
+            .ToListAsync();
+
+        return users.Select(u => new DriverInfo
+        {
+            Id = u.Id,
+            FullName = u.FullName,
+            Phone = u.Phone,
+            VehiclePlate = u.VehiclePlate,
+            CapacityKg = u.VehicleCapacityKg,
+            IsActive = u.IsActive,
+        }).ToList();
+    }
+
+    // Chuyến hoàn thành trong kỳ và mọi chuyến đang chạy
+    public async Task<List<TripReportRow>> GetTripRowsAsync(DateTime fromUtc, DateTime toUtc)
+    {
+        var trips = await _db.Trips.AsNoTracking()
+            .Include(t => t.Bundles)
+            .Where(t => (t.Status == TripStatus.Completed && t.CompletedAt >= fromUtc && t.CompletedAt < toUtc)
+                        || t.Status == TripStatus.Assigned
+                        || t.Status == TripStatus.AtWarehouse
+                        || t.Status == TripStatus.InTransit)
+            .ToListAsync();
+
+        return trips.Select(t => new TripReportRow
+        {
+            DriverId = t.DriverId,
+            Status = t.Status,
+            StartedAt = t.StartedAt,
+            CompletedAt = t.CompletedAt,
+            BundlesDelivered = t.Bundles.Count(b => b.Status == BundleStatus.Received || b.Status == BundleStatus.Opened),
+            WeightDeliveredKg = t.Bundles
+                .Where(b => b.Status == BundleStatus.Received || b.Status == BundleStatus.Opened)
+                .Sum(b => b.TotalWeightKg),
+            BundlesMissing = t.Bundles.Count(b => b.Status == BundleStatus.Missing),
+        }).ToList();
+    }
+
     // ================= FR17 =================
 
     public async Task<List<WarehouseInfo>> GetWarehousesAsync()

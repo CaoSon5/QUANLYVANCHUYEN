@@ -14,6 +14,9 @@ public class AppDbContext : DbContext
     public DbSet<OrderStatusHistory> OrderStatusHistory => Set<OrderStatusHistory>();
     public DbSet<OrderPhoto> OrderPhotos => Set<OrderPhoto>();
     public DbSet<Bundle> Bundles => Set<Bundle>();
+    public DbSet<Trip> Trips => Set<Trip>();
+    public DbSet<TripStop> TripStops => Set<TripStop>();
+    public DbSet<TripDiscrepancy> TripDiscrepancies => Set<TripDiscrepancy>();
     public DbSet<CodRemittance> CodRemittances => Set<CodRemittance>();
     public DbSet<Settlement> Settlements => Set<Settlement>();
     public DbSet<SettlementAdjustment> SettlementAdjustments => Set<SettlementAdjustment>();
@@ -27,6 +30,7 @@ public class AppDbContext : DbContext
         modelBuilder.HasSequence<long>("order_code_seq");
         modelBuilder.HasSequence<long>("remittance_code_seq");
         modelBuilder.HasSequence<long>("bundle_code_seq");
+        modelBuilder.HasSequence<long>("trip_code_seq");
         modelBuilder.HasSequence<long>("settlement_code_seq");
     }
 }

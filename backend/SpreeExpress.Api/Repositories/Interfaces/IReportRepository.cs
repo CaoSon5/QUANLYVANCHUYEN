@@ -59,6 +59,28 @@ public class StockRow
     public DateTime? ReceivedAt { get; set; }
 }
 
+public class DriverInfo
+{
+    public Guid Id { get; set; }
+    public string FullName { get; set; } = string.Empty;
+    public string Phone { get; set; } = string.Empty;
+    public string? VehiclePlate { get; set; }
+    public decimal? CapacityKg { get; set; }
+    public bool IsActive { get; set; }
+}
+
+// Một chuyến, đã gộp sẵn số liệu về bao
+public class TripReportRow
+{
+    public Guid DriverId { get; set; }
+    public TripStatus Status { get; set; }
+    public DateTime? StartedAt { get; set; }
+    public DateTime? CompletedAt { get; set; }
+    public int BundlesDelivered { get; set; }       // bao đã được kho đích nhận
+    public decimal WeightDeliveredKg { get; set; }
+    public int BundlesMissing { get; set; }
+}
+
 public class CodReportCounts
 {
     public decimal CodCollected { get; set; }
@@ -91,6 +113,10 @@ public interface IReportRepository
     // FR17
     Task<List<WarehouseInfo>> GetWarehousesAsync();
     Task<List<StockRow>> GetStockRowsAsync();
+
+    // FR16: tài xế
+    Task<List<DriverInfo>> GetDriversAsync();
+    Task<List<TripReportRow>> GetTripRowsAsync(DateTime fromUtc, DateTime toUtc);
 
     // FR18
     Task<CodReportCounts> GetCodCountsAsync(DateTime fromUtc, DateTime toUtc);

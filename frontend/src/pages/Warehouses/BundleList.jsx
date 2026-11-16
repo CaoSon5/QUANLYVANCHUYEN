@@ -16,7 +16,7 @@ import '../Orders/orders.css';
 const PAGE_SIZE = 10;
 
 // Nhân viên kho: danh sách bao ở kho mình, tìm bao theo mã bao hoặc mã đơn trong bao (FR40)
-export default function BundleList() {
+export default function BundleList({ onOpen }) {
   const { role, user } = useAuth();
   const navigate = useNavigate();
   const canCreate = role === 'warehouse';
@@ -105,7 +105,11 @@ export default function BundleList() {
             <tbody>
               {items.map((b) => (
                 <tr key={b.id}>
-                  <td><Link className="code-link" to={`/${role}/bundles/${b.id}`}>{b.code}</Link></td>
+                  <td>
+                    {onOpen
+                      ? <button className="code-link" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} onClick={() => onOpen(b.id)}>{b.code}</button>
+                      : <Link className="code-link" to={`/${role}/bundles/${b.id}`}>{b.code}</Link>}
+                  </td>
                   <td><b>{b.destinationCode}</b><div className="muted" style={{ fontSize: 13 }}>{b.destinationName}</div></td>
                   <td>{b.orderCount}</td>
                   <td>{b.totalWeightKg} kg</td>

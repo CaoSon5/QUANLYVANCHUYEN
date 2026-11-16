@@ -1,3 +1,4 @@
+// Đặt vào: D:\spreeexpress_supabase\spreeexpress\backend\SpreeExpress.Api\Entities\
 namespace SpreeExpress.Api.Entities;
 
 public class User
@@ -17,4 +18,8 @@ public class User
     // Kho mà nhân viên kho / shipper được gán (mỗi người chỉ thuộc một kho). Vai trò khác để trống.
     public Guid? WarehouseId { get; set; }
     public Warehouse? Warehouse { get; set; }
+
+    // Xe của tài xế (chỉ dùng cho vai trò tài xế): biển số và tải trọng tối đa (kg)
+    public string? VehiclePlate { get; set; }
+    public decimal? VehicleCapacityKg { get; set; }
 }

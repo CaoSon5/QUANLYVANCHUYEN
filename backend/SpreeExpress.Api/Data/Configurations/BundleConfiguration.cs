@@ -20,11 +20,14 @@ public class BundleConfiguration : IEntityTypeConfiguration<Bundle>
         b.HasIndex(x => x.Code).IsUnique();
         b.HasIndex(x => new { x.CurrentWarehouseId, x.Status });
         b.HasIndex(x => x.DestinationWarehouseId);
+        b.HasIndex(x => x.TripId);
 
         b.HasOne(x => x.Origin).WithMany().HasForeignKey(x => x.OriginWarehouseId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne(x => x.Current).WithMany().HasForeignKey(x => x.CurrentWarehouseId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne(x => x.Destination).WithMany().HasForeignKey(x => x.DestinationWarehouseId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne(x => x.CreatedBy).WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.Restrict);
+
+        b.HasOne(x => x.LoadedAtWarehouse).WithMany().HasForeignKey(x => x.LoadedAtWarehouseId).OnDelete(DeleteBehavior.Restrict);
 
         b.HasMany(x => x.Orders).WithOne(x => x.Bundle).HasForeignKey(x => x.BundleId).OnDelete(DeleteBehavior.Restrict);
     }

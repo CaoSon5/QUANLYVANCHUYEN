@@ -79,7 +79,7 @@ export default function ShipperReport({ range }) {
 
         <div className="report-note">
           Số liệu đếm theo từng lần thao tác của shipper trong lịch sử đơn. Giờ giao trung bình tính từ lúc kho xuất hàng đến lúc giao thành công.
-          Hiệu suất <b>tài xế</b> sẽ có khi hệ thống làm phần chuyến vận chuyển giữa các kho.
+          Hiệu suất <b>tài xế</b> xem ở thẻ riêng "Hiệu suất tài xế".
         </div>
       </div>
     </>

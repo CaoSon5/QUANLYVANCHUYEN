@@ -144,6 +144,62 @@ public class ReportService : IReportService
         };
     }
 
+    // ================= FR16: HIỆU SUẤT TÀI XẾ =================
+
+    public async Task<DriverReportDto> GetDriverReportAsync(DateOnly? from, DateOnly? to)
+    {
+        var range = Range(from, to, 366);
+
+        var drivers = await _reports.GetDriversAsync();
+        var rows = await _reports.GetTripRowsAsync(range.FromUtc, range.ToUtc);
+        var rowsBy = rows.GroupBy(r => r.DriverId).ToDictionary(g => g.Key, g => g.ToList());
+
+        var list = new List<DriverPerformanceDto>();
+        foreach (var d in drivers)
+        {
+            rowsBy.TryGetValue(d.Id, out var mine);
+            var done = mine?.Where(r => r.Status == TripStatus.Completed).ToList() ?? new List<TripReportRow>();
+            var running = mine?.Count(r => r.Status != TripStatus.Completed) ?? 0;
+
+            // Tài xế đã khóa mà trong kỳ không có hoạt động thì không cần hiện
+            if (!d.IsActive && done.Count == 0 && running == 0) continue;
+
+            var timed = done.Where(r => r.StartedAt.HasValue && r.CompletedAt.HasValue).ToList();
+            decimal? avgHours = timed.Count > 0
+                ? Math.Round((decimal)timed.Average(r => (r.CompletedAt!.Value - r.StartedAt!.Value).TotalHours), 1)
+                : null;
+
+            list.Add(new DriverPerformanceDto
+            {
+                DriverId = d.Id,
+                FullName = d.FullName,
+                Phone = d.Phone,
+                VehiclePlate = d.VehiclePlate,
+                CapacityKg = d.CapacityKg,
+                IsActive = d.IsActive,
+                TripsCompleted = done.Count,
+                TripsInProgress = running,
+                BundlesDelivered = done.Sum(r => r.BundlesDelivered),
+                WeightDeliveredKg = done.Sum(r => r.WeightDeliveredKg),
+                BundlesMissing = done.Sum(r => r.BundlesMissing),
+                AverageTripHours = avgHours,
+            });
+        }
+
+        list = list.OrderByDescending(x => x.TripsCompleted).ThenBy(x => x.FullName).ToList();
+
+        return new DriverReportDto
+        {
+            From = range.From,
+            To = range.To,
+            Drivers = list,
+            TotalTrips = list.Sum(x => x.TripsCompleted),
+            TotalBundles = list.Sum(x => x.BundlesDelivered),
+            TotalWeightKg = list.Sum(x => x.WeightDeliveredKg),
+            TotalMissing = list.Sum(x => x.BundlesMissing),
+        };
+    }
+
     // ================= FR17: TỒN KHO THEO TỪNG KHO =================
 
     // Ảnh chụp tại thời điểm xem (không theo kỳ): mỗi kho đang giữ bao nhiêu đơn, bao nhiêu kiện, đơn nào quá hạn.

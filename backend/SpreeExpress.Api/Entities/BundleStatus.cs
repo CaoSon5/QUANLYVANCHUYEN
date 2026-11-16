@@ -9,5 +9,6 @@ public enum BundleStatus
     InTransit,   // Đang trên xe (thuộc một chuyến vận chuyển)
     Received,    // Đã đến kho đích, chờ mở bao
     Opened,      // Đã mở bao, các đơn đã nhập kho tại kho đích
+    Missing,     // Thất lạc: kho đích báo không nhận được bao
     Cancelled    // Đã hủy bao, các đơn trở lại kho
 }

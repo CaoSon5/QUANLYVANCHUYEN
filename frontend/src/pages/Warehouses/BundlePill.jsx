@@ -7,6 +7,7 @@ export const BUNDLE_STATUS = {
   in_transit: { label: 'Đang vận chuyển', tone: 'purple' },
   received: { label: 'Đã đến kho đích', tone: 'purple' },
   opened: { label: 'Đã mở bao', tone: 'green' },
+  missing: { label: 'Thất lạc', tone: 'red' },
   cancelled: { label: 'Đã hủy', tone: 'gray' },
 };
 

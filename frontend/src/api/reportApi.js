@@ -9,6 +9,7 @@ export const reportApi = {
   // Báo cáo vận hành. params: { from: 'yyyy-MM-dd', to: 'yyyy-MM-dd' } (bỏ trống = 30 ngày gần nhất)
   orders: (params) => axiosClient.get('/api/reports/orders', { params }).then((r) => r.data),       // FR13, FR15
   shippers: (params) => axiosClient.get('/api/reports/shippers', { params }).then((r) => r.data),   // FR16
+  drivers: (params) => axiosClient.get('/api/reports/drivers', { params }).then((r) => r.data),                 // FR16 (tài xế)
   inventory: () => axiosClient.get('/api/reports/inventory').then((r) => r.data),                   // FR17
   cod: (params) => axiosClient.get('/api/reports/cod', { params }).then((r) => r.data),             // FR18
 };

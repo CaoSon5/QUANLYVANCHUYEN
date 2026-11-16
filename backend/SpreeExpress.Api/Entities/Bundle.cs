@@ -36,5 +36,16 @@ public class Bundle
     public User? CreatedBy { get; set; }
     public DateTime? SealedAt { get; set; }
 
+    // Chuyến vận chuyển đang chở bao (FR35)
+    public Guid? TripId { get; set; }
+    public Trip? Trip { get; set; }
+    public int LoadSeq { get; set; }                   // thứ tự lên xe, dùng để chọn kho đến tiếp theo
+    public DateTime? LoadedAt { get; set; }
+    public Guid? LoadedAtWarehouseId { get; set; }     // kho nơi bao được lên xe
+    public Warehouse? LoadedAtWarehouse { get; set; }
+
+    public DateTime? ReceivedAt { get; set; }          // kho đích nhận bao (FR30)
+    public DateTime? OpenedAt { get; set; }            // kho đích mở bao (FR39)
+
     public List<Order> Orders { get; set; } = new();
 }

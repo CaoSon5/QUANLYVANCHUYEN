@@ -1,4 +1,4 @@
-
+// Đặt vào: D:\spreeexpress_supabase\spreeexpress\frontend\src\pages\WarehouseOps\
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
@@ -12,7 +12,7 @@ import '../Accounts/accounts.css';
 import '../Orders/orders.css';
 
 // Chi tiết một bao: quét mã đơn để thêm vào bao, bớt đơn, đóng bao, mở lại, hủy bao (FR33, FR34)
-export default function BundleDetailPage({ id }) {
+export default function BundleDetailPage({ id, onBack }) {
   const { role } = useAuth();
   const canEdit = role === 'warehouse';
   const inputRef = useRef(null);
@@ -37,6 +37,7 @@ export default function BundleDetailPage({ id }) {
 
   const isOpen = bundle?.status === 'open';
   const isSealed = bundle?.status === 'sealed';
+  const isReceived = bundle?.status === 'received';
 
   // Chạy một thao tác rồi cập nhật bao từ kết quả trả về
   const run = async (action, successText) => {
@@ -73,12 +74,20 @@ export default function BundleDetailPage({ id }) {
 
   const reopen = () => run(() => bundleApi.reopen(id), 'Đã mở lại bao, bạn có thể thêm hoặc bớt đơn.');
 
+  // FR39: kho đích mở bao, các đơn bên trong nhập kho
+  const openBundle = () => {
+    if (!window.confirm(`Mở bao ${bundle.code}? ${bundle.orderCount} đơn bên trong sẽ nhập kho ${bundle.currentCode}.`)) return;
+    run(() => bundleApi.open(id), 'Đã mở bao, các đơn đã nhập kho.');
+  };
+
   const cancel = () => {
     if (!window.confirm(`Hủy bao ${bundle.code}? Các đơn bên trong sẽ trở lại kho.`)) return;
     run(() => bundleApi.cancel(id), 'Đã hủy bao, các đơn đã trở lại kho.');
   };
 
-  const back = <Link className="wh-back" to={`/${role}/bundles`}><ArrowLeft size={18} /> Danh sách bao hàng</Link>;
+  const back = onBack
+    ? <button className="wh-back" style={{ background: 'none', border: 'none', cursor: 'pointer' }} onClick={onBack}><ArrowLeft size={18} /> Danh sách bao hàng</button>
+    : <Link className="wh-back" to={`/${role}/bundles`}><ArrowLeft size={18} /> Danh sách bao hàng</Link>;
 
   if (!bundle) {
     return (
@@ -98,6 +107,11 @@ export default function BundleDetailPage({ id }) {
           <h1>{bundle.code}</h1>
           <BundlePill status={bundle.status} />
         </div>
+        {canEdit && isReceived && (
+          <div className="wh-actions">
+            <button className="btn btn-primary" disabled={busy} onClick={openBundle}>Mở bao</button>
+          </div>
+        )}
         {canEdit && (isOpen || isSealed) && (
           <div className="wh-actions">
             {isOpen && <button className="btn btn-primary" disabled={busy || bundle.orderCount === 0} onClick={seal}>Đóng bao</button>}
@@ -141,6 +155,16 @@ export default function BundleDetailPage({ id }) {
             <button className="btn btn-primary" type="submit" disabled={busy}>{busy ? 'Đang thêm...' : 'Thêm vào bao'}</button>
           </div>
         </form>
+      )}
+
+      {canEdit && isReceived && (
+        <div className="od-alert">Bao đã đến kho này và đã được nhận. Hãy mở bao để các đơn bên trong nhập kho, sau đó shipper giao như thường.</div>
+      )}
+      {bundle.status === 'in_transit' && (
+        <div className="od-alert">Bao đang trên xe vận chuyển đến kho đích.</div>
+      )}
+      {bundle.status === 'missing' && (
+        <div className="od-alert" style={{ background: '#fef2f2', borderColor: '#fecaca', color: '#991b1b' }}>Bao đã bị báo thất lạc khi đến kho đích. Điều phối viên và Admin đã được ghi nhận.</div>
       )}
 
       {canEdit && isSealed && (

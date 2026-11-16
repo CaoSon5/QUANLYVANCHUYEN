@@ -39,6 +39,11 @@ public class ReportsController : ControllerBase
     public async Task<ActionResult<ShipperReportDto>> Shippers([FromQuery] DateOnly? from, [FromQuery] DateOnly? to) =>
         Ok(await _reports.GetShipperReportAsync(from, to));
 
+    // FR16: hiệu suất từng tài xế
+    [HttpGet("drivers")]
+    public async Task<ActionResult<DriverReportDto>> Drivers([FromQuery] DateOnly? from, [FromQuery] DateOnly? to) =>
+        Ok(await _reports.GetDriverReportAsync(from, to));
+
     // FR17: tồn kho theo từng kho (tại thời điểm xem)
     [HttpGet("inventory")]
     public async Task<ActionResult<InventoryReportDto>> Inventory() =>

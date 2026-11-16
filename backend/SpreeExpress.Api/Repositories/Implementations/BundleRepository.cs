@@ -27,6 +27,14 @@ public class BundleRepository : IBundleRepository
             .Include(b => b.Orders)
             .FirstOrDefaultAsync(b => b.Id == id);
 
+    public Task<Bundle?> GetTrackedByCodeAsync(string code) =>
+        _db.Bundles
+            .Include(b => b.Origin)
+            .Include(b => b.Current)
+            .Include(b => b.Destination)
+            .Include(b => b.Orders)
+            .FirstOrDefaultAsync(b => b.Code == code);
+
     public Task<Bundle?> GetDetailAsync(Guid id) =>
         _db.Bundles.AsNoTracking()
             .Include(b => b.Origin)

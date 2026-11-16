@@ -19,6 +19,7 @@ public interface IBundleRepository
 
     // Có theo dõi, kèm danh sách đơn: dùng khi thêm, bớt đơn hoặc đổi trạng thái bao
     Task<Bundle?> GetTrackedAsync(Guid id);
+    Task<Bundle?> GetTrackedByCodeAsync(string code);   // có theo dõi, kèm đơn: dùng khi lên xe
 
     // Chỉ đọc, kèm kho và đơn: dùng để hiển thị chi tiết
     Task<Bundle?> GetDetailAsync(Guid id);

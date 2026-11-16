@@ -1,3 +1,4 @@
+// Đặt vào: D:\spreeexpress_supabase\spreeexpress\backend\SpreeExpress.Api\Services\Implementations\
 using SpreeExpress.Api.DTOs;
 using SpreeExpress.Api.Entities;
 using SpreeExpress.Api.Helpers;
@@ -70,6 +71,8 @@ public class UserService : IUserService
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
             Role = role,
             WarehouseId = warehouseId,
+            VehiclePlate = role == UserRole.Driver ? CleanPlate(request.VehiclePlate) : null,
+            VehicleCapacityKg = role == UserRole.Driver ? request.VehicleCapacityKg : null,
             MustChangePassword = true, // nhân viên phải tự đổi mật khẩu ở lần đăng nhập đầu
         };
 
@@ -98,6 +101,9 @@ public class UserService : IUserService
             var warehouseId = await ResolveWarehouseAsync(role, request.WarehouseId, user.WarehouseId);
             user.Role = role;
             user.WarehouseId = warehouseId;
+            // Hồ sơ xe chỉ dành cho tài xế; đổi sang vai trò khác thì xóa
+            user.VehiclePlate = role == UserRole.Driver ? CleanPlate(request.VehiclePlate) : null;
+            user.VehicleCapacityKg = role == UserRole.Driver ? request.VehicleCapacityKg : null;
         }
 
         user.FullName = request.FullName.Trim();
@@ -167,6 +173,9 @@ public class UserService : IUserService
         return role;
     }
 
+    private static string? CleanPlate(string? plate) =>
+        string.IsNullOrWhiteSpace(plate) ? null : plate.Trim().ToUpperInvariant();
+
     private static UserDetailDto ToDetail(User u) => new()
     {
         Id = u.Id,
@@ -179,6 +188,8 @@ public class UserService : IUserService
         WarehouseId = u.WarehouseId,
         WarehouseCode = u.Warehouse?.Code,
         WarehouseName = u.Warehouse?.Name,
+        VehiclePlate = u.VehiclePlate,
+        VehicleCapacityKg = u.VehicleCapacityKg,
         CreatedAt = u.CreatedAt,
     };
 }

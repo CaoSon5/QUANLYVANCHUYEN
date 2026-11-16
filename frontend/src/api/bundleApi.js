@@ -15,4 +15,6 @@ export const bundleApi = {
   seal: (id) => axiosClient.post(`/api/bundles/${id}/seal`).then((r) => r.data),
   reopen: (id) => axiosClient.post(`/api/bundles/${id}/reopen`).then((r) => r.data),
   cancel: (id) => axiosClient.post(`/api/bundles/${id}/cancel`).then((r) => r.data),
+  // Kho đích mở bao đã nhận (FR39)
+  open: (id) => axiosClient.post(`/api/bundles/${id}/open`).then((r) => r.data),
 };

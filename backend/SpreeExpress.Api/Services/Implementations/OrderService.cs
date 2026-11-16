@@ -717,7 +717,7 @@ public class OrderService : IOrderService
         OrderStatus.PickupAccepted => "Shipper đã nhận đơn và sắp đến lấy hàng",
         OrderStatus.PickedUp => "Đã lấy hàng từ người gửi",
         OrderStatus.InWarehouse => "Hàng đã về kho",
-        OrderStatus.Bundled => "Hàng đang được đóng gói để chuyển sang kho khác",
+        OrderStatus.Bundled => "Hàng đang được đóng gói hoặc phân loại tại kho",
         OrderStatus.DeliveryAccepted => "Đơn đã được phân cho shipper giao",
         OrderStatus.InTransit => "Hàng đang được vận chuyển giữa các kho",
         OrderStatus.OutForDelivery => "Shipper đang giao hàng đến bạn",
@@ -728,6 +728,110 @@ public class OrderService : IOrderService
         OrderStatus.Cancelled => "Đơn hàng đã bị hủy",
         _ => "Đang xử lý",
     };
+
+    // ================= PHÂN CÔNG THỦ CÔNG (FR27) =================
+
+    // Kho mà shipper được phân công phải thuộc: kho lấy hàng (đơn chờ lấy) hoặc kho đang giữ hàng (đơn chờ giao)
+    private static Guid? AssignWarehouse(Order order) => order.Status switch
+    {
+        OrderStatus.PendingPickup => order.PickupWarehouseId,
+        OrderStatus.InWarehouse or OrderStatus.DeliveryFailed => order.CurrentWarehouseId,
+        _ => null,
+    };
+
+    private async Task<User> GetDispatcherOrAdminAsync(Guid userId)
+    {
+        var user = await GetUserAsync(userId);
+        if (user.Role != UserRole.Dispatcher && user.Role != UserRole.Admin)
+            throw new AppException("Chỉ Điều phối viên hoặc Admin mới phân công shipper thủ công được", 403);
+        return user;
+    }
+
+    // Danh sách shipper đang hoạt động của kho phù hợp với đơn
+    public async Task<List<AssignableShipperDto>> ListAssignableShippersAsync(Guid actorId, Guid orderId)
+    {
+        await GetDispatcherOrAdminAsync(actorId);
+        var order = await _orders.GetTrackedAsync(orderId)
+                    ?? throw new AppException("Không tìm thấy đơn hàng", 404);
+
+        var warehouseId = AssignWarehouse(order)
+                          ?? throw new AppException("Đơn ở trạng thái này chưa phân công shipper được", 409);
+
+        var (shippers, _) = await _users.SearchAsync(null, UserRole.Shipper, true, 1, 500);
+        return shippers
+            .Where(s => s.WarehouseId == warehouseId)
+            .OrderBy(s => s.FullName)
+            .Select(s => new AssignableShipperDto
+            {
+                Id = s.Id,
+                FullName = s.FullName,
+                Phone = s.Phone,
+                WarehouseCode = s.Warehouse?.Code,
+            })
+            .ToList();
+    }
+
+    // Phân công một shipper cụ thể thay vì để shipper tự chọn (FR27)
+    public async Task<OrderDto> ManualAssignAsync(Guid actorId, Guid orderId, Guid shipperId)
+    {
+        var actor = await GetDispatcherOrAdminAsync(actorId);
+
+        var shipper = await GetUserAsync(shipperId);
+        if (shipper.Role != UserRole.Shipper)
+            throw new AppException("Người được chọn không phải shipper", 400);
+        if (!shipper.IsActive)
+            throw new AppException("Tài khoản shipper đang bị khóa", 409);
+        if (!shipper.WarehouseId.HasValue)
+            throw new AppException("Shipper chưa được gán kho", 400);
+
+        var order = await _orders.GetTrackedAsync(orderId)
+                    ?? throw new AppException("Không tìm thấy đơn hàng", 404);
+
+        var by = actor.Role == UserRole.Admin ? "Admin" : "Điều phối viên";
+        var now = DateTime.UtcNow;
+
+        if (order.Status == OrderStatus.PendingPickup)
+        {
+            if (order.PickupWarehouseId != shipper.WarehouseId)
+                throw new AppException("Shipper không thuộc kho lấy hàng của đơn này", 400);
+
+            order.Status = OrderStatus.PickupAccepted;
+            order.PickupShipperId = shipper.Id;
+            order.AcceptedAt = now;
+            order.UpdatedAt = now;
+            AddAssignHistory(order, OrderStatus.PickupAccepted,
+                $"{by} {actor.FullName} đã phân công shipper {shipper.FullName} đến lấy hàng", actorId);
+        }
+        else if (order.Status == OrderStatus.InWarehouse || order.Status == OrderStatus.DeliveryFailed)
+        {
+            if (order.CurrentWarehouseId != shipper.WarehouseId)
+                throw new AppException("Shipper không thuộc kho đang giữ hàng của đơn này", 400);
+
+            var retryText = order.Status == OrderStatus.DeliveryFailed ? $" lại (lần {order.DeliveryAttempts + 1})" : "";
+            order.Status = OrderStatus.DeliveryAccepted;
+            order.DeliveryShipperId = shipper.Id;
+            order.DeliveryAcceptedAt = now;
+            order.UpdatedAt = now;
+            AddAssignHistory(order, OrderStatus.DeliveryAccepted,
+                $"{by} {actor.FullName} đã phân công shipper {shipper.FullName} giao hàng{retryText}", actorId);
+        }
+        else
+        {
+            throw new AppException("Đơn ở trạng thái này không phân công shipper được (chỉ đơn chờ lấy hoặc đơn đã nhập kho chờ giao)", 409);
+        }
+
+        await _orders.SaveAsync();
+        return await LoadDtoAsync(order.Id, canModify: false);
+    }
+
+    private void AddAssignHistory(Order order, OrderStatus status, string note, Guid actorId) =>
+        _orders.AddHistory(new OrderStatusHistory
+        {
+            OrderId = order.Id,
+            Status = status,
+            Note = note,
+            ActorUserId = actorId,
+        });
 
     // FR09: các đơn đang nằm trong một kho (đã nhập kho, chờ xuất, chờ giao lại, chờ hoàn)
     public async Task<PagedResult<OrderDto>> ListWarehouseStockAsync(

@@ -290,3 +290,18 @@ public class ReceiverAreaDto
     public string RegionCode { get; set; } = string.Empty;
     public string RegionName { get; set; } = string.Empty;
 }
+
+// FR27: điều phối viên phân công shipper thủ công cho đơn trong trường hợp ngoại lệ
+public class AssignableShipperDto
+{
+    public Guid Id { get; set; }
+    public string FullName { get; set; } = string.Empty;
+    public string Phone { get; set; } = string.Empty;
+    public string? WarehouseCode { get; set; }
+}
+
+public class AssignOrderRequest
+{
+    [Required(ErrorMessage = "Vui lòng chọn shipper")]
+    public Guid? ShipperId { get; set; }
+}

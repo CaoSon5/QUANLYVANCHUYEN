@@ -46,6 +46,10 @@ builder.Services.AddSingleton<ShippingFeeCalculator>();
 builder.Services.AddSingleton<JwtTokenGenerator>();
 builder.Services.AddScoped<IReportRepository, ReportRepository>();
 builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<ITripRepository, TripRepository>();
+builder.Services.AddScoped<ITripService, TripService>();
+builder.Services.AddScoped<IBundleRepository, BundleRepository>();
+builder.Services.AddScoped<IBundleService, BundleService>();
 
 // ----- Controllers: lỗi validate trả về { message } -----
 builder.Services.AddControllers().ConfigureApiBehaviorOptions(options =>

@@ -7,6 +7,7 @@ public interface IReportService
 {
     Task<OrderReportDto> GetOrderReportAsync(DateOnly? from, DateOnly? to);          // FR13, FR15
     Task<ShipperReportDto> GetShipperReportAsync(DateOnly? from, DateOnly? to);      // FR16
+    Task<DriverReportDto> GetDriverReportAsync(DateOnly? from, DateOnly? to);        // FR16 (tài xế)
     Task<InventoryReportDto> GetInventoryReportAsync();                              // FR17
     Task<CodReportDto> GetCodReportAsync(DateOnly? from, DateOnly? to);              // FR18
 }

@@ -1,3 +1,4 @@
+// Đặt vào: D:\spreeexpress_supabase\spreeexpress\backend\SpreeExpress.Api\Data\Configurations\
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using SpreeExpress.Api.Entities;
@@ -16,6 +17,8 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         b.Property(x => x.Phone).IsRequired().HasMaxLength(20);
         b.Property(x => x.PasswordHash).IsRequired().HasMaxLength(100);
         b.Property(x => x.Role).HasConversion<string>().HasMaxLength(20);
+        b.Property(x => x.VehiclePlate).HasMaxLength(20);
+        b.Property(x => x.VehicleCapacityKg).HasPrecision(12, 2);
 
         // Email và số điện thoại không được trùng
         b.HasIndex(x => x.Email).IsUnique();

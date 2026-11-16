@@ -1,3 +1,4 @@
+// Đặt vào: D:\spreeexpress_supabase\spreeexpress\frontend\src\pages\Accounts\
 import { useEffect, useState } from 'react';
 import Modal from '../../components/common/Modal';
 import { userApi } from '../../api/userApi';
@@ -24,6 +25,8 @@ export default function UserFormModal({ mode, user, onClose, onSaved }) {
     phone: user?.phone ?? '',
     role: user?.role ?? 'shipper',
     warehouseId: user?.warehouseId ?? '',
+    vehiclePlate: user?.vehiclePlate ?? '',
+    vehicleCapacityKg: user?.vehicleCapacityKg ?? '',
     password: '',
   });
   const [warehouses, setWarehouses] = useState([]);
@@ -60,6 +63,9 @@ export default function UserFormModal({ mode, user, onClose, onSaved }) {
     if (!EMAIL_REGEX.test(form.email.trim())) return 'Email không hợp lệ';
     if (!PHONE_REGEX.test(form.phone.replace(/\s/g, ''))) return 'Số điện thoại không hợp lệ';
     if (!isEdit && form.password.length < 6) return 'Mật khẩu tối thiểu 6 ký tự';
+    if (form.role === 'driver' && form.vehicleCapacityKg !== '' && !(Number(form.vehicleCapacityKg) > 0)) {
+      return 'Tải trọng xe phải là số lớn hơn 0';
+    }
     if (!isAdminUser && needsWarehouse(form.role) && !form.warehouseId) {
       return form.role === 'shipper' ? 'Vui lòng chọn kho địa phương cho shipper' : 'Vui lòng chọn kho cho nhân viên kho';
     }
@@ -80,6 +86,9 @@ export default function UserFormModal({ mode, user, onClose, onSaved }) {
         phone: form.phone.replace(/\s/g, ''),
         role: form.role,
         warehouseId: needsWarehouse(form.role) && form.warehouseId ? form.warehouseId : null,
+        // Hồ sơ xe chỉ dành cho tài xế
+        vehiclePlate: form.role === 'driver' && form.vehiclePlate.trim() ? form.vehiclePlate.trim() : null,
+        vehicleCapacityKg: form.role === 'driver' && form.vehicleCapacityKg !== '' ? Number(form.vehicleCapacityKg) : null,
       };
       if (isEdit) await userApi.update(user.id, body);
       else await userApi.create({ ...body, password: form.password });
@@ -134,6 +143,16 @@ export default function UserFormModal({ mode, user, onClose, onSaved }) {
                   ? 'Shipper chỉ nhận đơn trong khu vực của kho này.'
                   : 'Nhân viên kho chỉ thấy dữ liệu của kho này. Mỗi người chỉ thuộc một kho.'}
             </div>
+          </>
+        )}
+
+        {!isAdminUser && form.role === 'driver' && (
+          <>
+            <label className="form-label">Biển số xe</label>
+            <input className="form-input" value={form.vehiclePlate} onChange={set('vehiclePlate')} placeholder="Ví dụ: 51C-123.45" maxLength={20} />
+            <label className="form-label">Tải trọng tối đa của xe (kg)</label>
+            <input className="form-input" type="number" min="1" step="10" value={form.vehicleCapacityKg} onChange={set('vehicleCapacityKg')} placeholder="Ví dụ: 1500" />
+            <div className="form-hint">Cần có đủ biển số và tải trọng thì điều phối viên mới phân chuyến cho tài xế này được.</div>
           </>
         )}
 

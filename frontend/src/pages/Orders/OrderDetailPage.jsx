@@ -5,6 +5,7 @@ import { ArrowLeft } from 'lucide-react';
 import { orderApi } from '../../api/orderApi';
 import { getErrorMessage } from '../../api/authApi';
 import { useAuth } from '../../context/AuthContext';
+import AssignShipperModal from './AssignShipperModal';
 import OrderDetailView from './OrderDetailView';
 import OrderStatusPill from './OrderStatusPill';
 import '../Accounts/accounts.css';
@@ -16,12 +17,17 @@ export default function OrderDetailPage({ id }) {
   const { role } = useAuth();
   const [order, setOrder] = useState(null);
   const [error, setError] = useState('');
+  const [assigning, setAssigning] = useState(false);
+  const [message, setMessage] = useState('');
 
   useEffect(() => {
     setOrder(null);
     setError('');
     orderApi.get(id).then(setOrder).catch((err) => setError(getErrorMessage(err)));
   }, [id]);
+
+  // FR27: phân công thủ công khi đơn đang chờ shipper lấy hoặc chờ shipper giao
+  const canAssign = order && ['pending_pickup', 'in_warehouse', 'delivery_failed'].includes(order.status);
 
   const back = <Link className="wh-back" to={`/${role}/orders`}><ArrowLeft size={18} /> Danh sách đơn hàng</Link>;
 
@@ -42,11 +48,25 @@ export default function OrderDetailPage({ id }) {
           <h1>{order.code}</h1>
           <OrderStatusPill status={order.status} />
         </div>
+        {canAssign && (
+          <div className="wh-actions">
+            <button className="btn" onClick={() => setAssigning(true)}>Phân công shipper</button>
+          </div>
+        )}
       </div>
+      {message && <div className="od-ok">{message}</div>}
       <div className="od-ok" style={{ background: '#f1f5f9', color: '#475569', borderColor: '#e2e8f0' }}>
         Người bán: <b>{order.sellerName}</b>
       </div>
       <OrderDetailView order={order} />
+
+      {assigning && (
+        <AssignShipperModal
+          order={order}
+          onClose={() => setAssigning(false)}
+          onDone={(updated) => { setOrder(updated); setAssigning(false); setMessage('Đã phân công shipper cho đơn này.'); }}
+        />
+      )}
     </>
   );
 }
