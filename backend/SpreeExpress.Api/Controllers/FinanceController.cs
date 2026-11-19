@@ -24,6 +24,14 @@ public class FinanceController : ControllerBase
     public async Task<ActionResult<FinanceSummaryDto>> Summary() =>
         Ok(await _finance.GetSummaryAsync());
 
+    // Báo cáo tài chính: dòng tiền COD trong kỳ và công nợ hiện tại
+    [HttpGet("report")]
+    public async Task<ActionResult<FinanceReportDto>> Report(
+        [FromQuery] string? granularity,
+        [FromQuery] DateOnly? from,
+        [FromQuery] DateOnly? to) =>
+        Ok(await _finance.GetFinanceReportAsync(granularity, from, to));
+
     // ----- Đối chiếu COD shipper -----
 
     // Mỗi shipper đang giữ bao nhiêu tiền COD chưa nộp

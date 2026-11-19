@@ -1,5 +1,6 @@
 // Đặt vào: D:\spreeexpress_supabase\spreeexpress\frontend\src\pages\Finance\
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import Modal from '../../components/common/Modal';
 import PageHeader from '../../components/common/PageHeader';
 import StatCard from '../../components/common/StatCard';
@@ -11,8 +12,42 @@ import { RemittancePill } from './FinancePills';
 import '../Accounts/accounts.css';
 import '../Orders/orders.css';
 import './finance.css';
+import './holdings.css';
 
 const PAGE_SIZE = 10;
+const NO_WAREHOUSE = 'none';
+
+// Nhóm shipper đang giữ tiền theo kho: kho giữ nhiều tiền nhất ở trên, kho "chưa gán" ở cuối
+function groupByWarehouse(holdings) {
+  const map = new Map();
+  holdings.forEach((h) => {
+    const key = h.warehouseId ?? NO_WAREHOUSE;
+    if (!map.has(key)) {
+      map.set(key, {
+        key,
+        code: h.warehouseCode,
+        name: h.warehouseName,
+        regionCode: h.regionCode,
+        shippers: [],
+        amount: 0,
+        orders: 0,
+      });
+    }
+    const g = map.get(key);
+    g.shippers.push(h);
+    g.amount += h.amount;
+    g.orders += h.orderCount;
+  });
+
+  const list = [...map.values()];
+  list.forEach((g) => g.shippers.sort((a, b) => b.amount - a.amount));
+  list.sort((a, b) => {
+    if (a.key === NO_WAREHOUSE) return 1;
+    if (b.key === NO_WAREHOUSE) return -1;
+    return b.amount - a.amount;
+  });
+  return list;
+}
 
 // Cửa sổ chi tiết phiếu nộp. Kế toán đối chiếu số tiền thực nhận rồi xác nhận (FR59).
 function RemittanceModal({ id, canConfirm, onClose, onChanged }) {
@@ -132,6 +167,7 @@ export default function RemittancesPage() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [openId, setOpenId] = useState(null);
+  const [collapsed, setCollapsed] = useState(() => new Set()); // các kho đang thu gọn ở tab "đang giữ tiền"
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -164,6 +200,15 @@ export default function RemittancesPage() {
 
   const switchTab = (t) => { setTab(t); setPage(1); setMessage(''); };
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const groups = useMemo(() => groupByWarehouse(holdings), [holdings]);
+  const holdingTotal = holdings.reduce((sum, h) => sum + h.amount, 0);
+  const toggleGroup = (key) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
   const daysSince = (iso) => (iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000) : null);
 
   const tabBtn = (key, label) => (
@@ -202,25 +247,72 @@ export default function RemittancesPage() {
         {error && <div className="acc-banner">{error}</div>}
 
         {tab === 'holdings' ? (
-          <div className="acc-scroll">
-            <table className="data-table" style={{ minWidth: 560 }}>
-              <thead><tr><th>SHIPPER</th><th>SỐ ĐƠN CHƯA NỘP</th><th>SỐ TIỀN ĐANG GIỮ</th><th>ĐƠN CŨ NHẤT</th></tr></thead>
-              <tbody>
-                {holdings.map((h) => {
-                  const days = daysSince(h.oldestDeliveredAt);
-                  return (
-                    <tr key={h.shipperId}>
-                      <td><b>{h.shipperName}</b><div className="muted" style={{ fontSize: 13 }}>{h.shipperPhone}</div></td>
-                      <td>{h.orderCount}</td>
-                      <td><b>{formatVnd(h.amount)}</b></td>
-                      <td style={days >= 2 ? { color: '#b91c1c', fontWeight: 700 } : undefined}>{days === null ? '—' : `${days} ngày trước`}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            {!loading && holdings.length === 0 && <div className="acc-empty">Không shipper nào đang giữ tiền COD chưa nộp.</div>}
-          </div>
+          <>
+            <div className="hd-sum">
+              <div><b>{formatVnd(holdingTotal)}</b><span>Tổng tiền shipper đang giữ</span></div>
+              <div><b>{holdings.length}</b><span>Shipper đang giữ tiền</span></div>
+              <div><b>{groups.length}</b><span>Kho có tiền chưa nộp</span></div>
+            </div>
+
+            {groups.length > 0 && (
+              <div className="hd-tools">
+                <button type="button" className="act-btn" onClick={() => setCollapsed(new Set())}>Mở rộng tất cả</button>
+                <button type="button" className="act-btn" onClick={() => setCollapsed(new Set(groups.map((g) => g.key)))}>Thu gọn tất cả</button>
+              </div>
+            )}
+
+            <div className="acc-scroll">
+              <table className="data-table hd-table" style={{ minWidth: 620 }}>
+                <thead><tr><th>KHO / SHIPPER</th><th>SỐ ĐƠN CHƯA NỘP</th><th>SỐ TIỀN ĐANG GIỮ</th><th>ĐƠN CŨ NHẤT</th></tr></thead>
+                <tbody>
+                  {groups.map((g) => {
+                    const closed = collapsed.has(g.key);
+                    const rows = [
+                      <tr key={`g-${g.key}`} className={`hd-kho ${g.key === NO_WAREHOUSE ? 'hd-none' : ''}`} onClick={() => toggleGroup(g.key)}>
+                        <td>
+                          <button
+                            type="button" className={`hd-tg ${closed ? 'closed' : ''}`} aria-expanded={!closed}
+                            aria-label={closed ? 'Mở rộng' : 'Thu gọn'}
+                            onClick={(e) => { e.stopPropagation(); toggleGroup(g.key); }}
+                          >
+                            <ChevronDown size={16} />
+                          </button>
+                          {g.key === NO_WAREHOUSE ? (
+                            'Chưa gán kho'
+                          ) : (
+                            <>
+                              <span className="code-link">{g.code}</span> {g.name}
+                              {g.regionCode && <span className="hd-meta">{g.regionCode}</span>}
+                            </>
+                          )}
+                          <span className="hd-meta">{g.shippers.length} shipper</span>
+                        </td>
+                        <td>{g.orders}</td>
+                        <td><b>{formatVnd(g.amount)}</b></td>
+                        <td />
+                      </tr>,
+                    ];
+
+                    if (!closed) {
+                      g.shippers.forEach((h) => {
+                        const days = daysSince(h.oldestDeliveredAt);
+                        rows.push(
+                          <tr key={h.shipperId} className="hd-sp">
+                            <td className="hd-sp-name"><b>{h.shipperName}</b><div className="muted" style={{ fontSize: 13 }}>{h.shipperPhone}</div></td>
+                            <td>{h.orderCount}</td>
+                            <td><b>{formatVnd(h.amount)}</b></td>
+                            <td style={days >= 2 ? { color: '#b91c1c', fontWeight: 700 } : undefined}>{days === null ? '—' : `${days} ngày trước`}</td>
+                          </tr>,
+                        );
+                      });
+                    }
+                    return rows;
+                  })}
+                </tbody>
+              </table>
+              {!loading && holdings.length === 0 && <div className="acc-empty">Không shipper nào đang giữ tiền COD chưa nộp.</div>}
+            </div>
+          </>
         ) : (
           <>
             <div className="acc-scroll">

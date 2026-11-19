@@ -29,4 +29,7 @@ public interface IFinanceService
 
     // ----- Báo cáo (FR14) -----
     Task<ShippingRevenueDto> GetShippingRevenueAsync(string? granularity, DateOnly? from, DateOnly? to);
+
+    // Báo cáo tài chính: dòng tiền COD trong kỳ và công nợ hiện tại
+    Task<FinanceReportDto> GetFinanceReportAsync(string? granularity, DateOnly? from, DateOnly? to);
 }

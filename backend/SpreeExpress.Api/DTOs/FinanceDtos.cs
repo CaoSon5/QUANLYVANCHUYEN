@@ -67,6 +67,12 @@ public class ShipperHoldingDto
     public int OrderCount { get; set; }
     public decimal Amount { get; set; }
     public DateTime? OldestDeliveredAt { get; set; }
+
+    // Kho của shipper (null = chưa được gán kho)
+    public Guid? WarehouseId { get; set; }
+    public string? WarehouseCode { get; set; }
+    public string? WarehouseName { get; set; }
+    public string? RegionCode { get; set; }
 }
 
 // ----- Đối soát người bán (FR60, FR61, FR67) -----
@@ -204,4 +210,41 @@ public class ShippingRevenueDto
     public decimal PreviousRevenue { get; set; }
     public int PreviousOrders { get; set; }
     public decimal? ChangePercent { get; set; }               // null nếu kỳ trước chưa có doanh thu
+}
+
+// ----- Báo cáo tài chính: dòng tiền COD và công nợ -----
+
+public class FinanceBucketDto
+{
+    public string Key { get; set; } = string.Empty;      // ngày đầu kỳ, dạng yyyy-MM-dd
+    public string Label { get; set; } = string.Empty;    // nhãn hiển thị: 31/10, 10/2026 hoặc 2026
+    public decimal CodCollected { get; set; }            // COD shipper đã thu (theo ngày giao)
+    public decimal CodRemitted { get; set; }             // tiền đã về công ty (theo ngày xác nhận phiếu)
+    public decimal CodSettled { get; set; }              // COD đã đưa vào bảng đối soát (theo ngày lập)
+    public decimal PaidOut { get; set; }                 // đã chuyển cho người bán (theo ngày chuyển)
+    public decimal ShippingFee { get; set; }             // phí vận chuyển của đơn giao thành công
+    public decimal Difference { get; set; }              // chênh lệch khi nộp tiền (âm = thiếu)
+}
+
+public class FinanceReportDto
+{
+    public string Granularity { get; set; } = string.Empty;   // day | month | year
+    public DateOnly From { get; set; }
+    public DateOnly To { get; set; }
+    public List<FinanceBucketDto> Buckets { get; set; } = new();
+
+    // Tổng trong kỳ
+    public decimal CodCollected { get; set; }
+    public decimal CodRemitted { get; set; }
+    public decimal CodSettled { get; set; }
+    public decimal PaidOut { get; set; }
+    public decimal ShippingFee { get; set; }
+    public decimal Difference { get; set; }
+
+    // Công nợ tại thời điểm xem báo cáo (không phụ thuộc kỳ)
+    public decimal ShipperHolding { get; set; }            // shipper đang giữ, chưa nộp
+    public decimal RemittancesPendingAmount { get; set; }  // phiếu nộp chờ xác nhận
+    public decimal ReceivedNotSettled { get; set; }        // COD đã về công ty, chưa lập đối soát
+    public decimal PayoutPending { get; set; }             // bảng đối soát chờ chuyển tiền
+    public decimal DifferenceTotal { get; set; }           // tổng chênh lệch của mọi phiếu đã xác nhận
 }

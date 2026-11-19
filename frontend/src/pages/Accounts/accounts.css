@@ -6,7 +6,7 @@
 .acc-select { border: 1px solid var(--border); border-radius: 12px; padding: 0 14px; height: 46px; background: #fff; color: var(--text); }
 
 .acc-scroll { overflow-x: auto; margin: 20px -24px 0; }
-.data-table { width: 100%; border-collapse: collapse; min-width: 860px; }
+.data-table { width: 100%; border-collapse: collapse; min-width: 920px; }
 .data-table th { text-align: left; font-size: 12px; letter-spacing: 1px; color: var(--muted); font-weight: 700; padding: 14px 24px; background: #f8fafc; white-space: nowrap; }
 .data-table td { padding: 14px 24px; border-top: 1px solid var(--border); font-size: 14px; vertical-align: middle; }
 .data-table tr.row-locked td { opacity: 0.55; }

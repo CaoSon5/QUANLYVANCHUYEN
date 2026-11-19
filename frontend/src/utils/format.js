@@ -19,6 +19,12 @@ export function formatDateTime(value) {
   });
 }
 
+// Số thứ tự của dòng trong bảng, nối tiếp giữa các trang: trang 2 (10 dòng/trang) bắt đầu từ 11.
+// index: vị trí dòng trong trang (bắt đầu từ 0)
+export function stt(page, pageSize, index) {
+  return (Math.max(1, Number(page) || 1) - 1) * pageSize + index + 1;
+}
+
 // "2026-10-31" -> "31/10/2026" (ngày không kèm giờ, ví dụ kỳ đối soát)
 export function formatDateOnly(value) {
   if (!value) return '—';

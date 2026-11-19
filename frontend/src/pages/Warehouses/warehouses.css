@@ -25,3 +25,15 @@
   .info-grid { grid-template-columns: 1fr; }
   .member-grid { grid-template-columns: 1fr; }
 }
+
+/* Bảng kho dạng cây: kho vùng là dòng đậm, kho địa phương thụt vào bên dưới */
+.wh-tools { display: flex; gap: 8px; margin-top: 20px; }
+.wh-tree tr.wh-reg td { background: #f8fafc; font-weight: 700; }
+.wh-tree td.wh-nm-loc { padding-left: 48px; }
+.wh-tg { display: inline-flex; align-items: center; background: none; border: none; padding: 4px; margin-right: 4px; color: var(--muted); border-radius: 6px; }
+.wh-tg:hover { background: #e2e8f0; }
+.wh-tg svg { transition: transform 0.15s; }
+.wh-tg.closed svg { transform: rotate(-90deg); }
+.wh-cnt { font-size: 12px; font-weight: 600; color: var(--muted); margin-left: 8px; }
+.wh-sub { font-size: 13px; color: var(--muted); font-weight: 400; margin-top: 2px; }
+.wh-tree tr.wh-none td { background: #fffbeb; color: #b45309; font-weight: 700; }

@@ -1,14 +1,60 @@
 // Đặt vào: D:\spreeexpress_supabase\spreeexpress\frontend\src\pages\Cod\
 import { useCallback, useEffect, useState } from 'react';
 import PageHeader from '../../components/common/PageHeader';
+import Modal from '../../components/common/Modal';
 import StatCard from '../../components/common/StatCard';
 import { codApi } from '../../api/financeApi';
 import { getErrorMessage } from '../../api/authApi';
+import { BANK, vietQrUrl } from '../../config/bank';
 import { formatDateTime, formatShortMoney, formatVnd } from '../../utils/format';
 import { RemittancePill } from '../Finance/FinancePills';
 import '../Accounts/accounts.css';
 import '../Orders/orders.css';
 import '../Finance/finance.css';
+
+// Cửa sổ chuyển khoản: mã QR VietQR điền sẵn số tiền + nội dung là mã phiếu
+function TransferModal({ remittance, onClose, onDone }) {
+  const [qrFailed, setQrFailed] = useState(false);
+  const amount = remittance.totalAmount;
+
+  return (
+    <Modal title={`Chuyển khoản phiếu ${remittance.code}`} onClose={onClose}>
+      <div style={{ textAlign: 'center' }}>
+        {qrFailed ? (
+          <div className="placeholder" style={{ minHeight: 200 }}>Không tải được mã QR. Hãy chuyển khoản theo thông tin bên dưới.</div>
+        ) : (
+          <img
+            src={vietQrUrl({ amount, content: remittance.code })}
+            alt={`Mã QR chuyển khoản ${formatVnd(amount)}`}
+            width={260}
+            style={{ maxWidth: '100%', borderRadius: 12, border: '1px solid var(--border)' }}
+            onError={() => setQrFailed(true)}
+          />
+        )}
+      </div>
+
+      <div className="result-banner">
+        <div>Ngân hàng: <b>{BANK.bankName}</b></div>
+        <div>Số tài khoản: <b>{BANK.accountNo}</b></div>
+        <div>Chủ tài khoản: <b>{BANK.accountName}</b></div>
+        <div>Số tiền: <b>{formatVnd(amount)}</b></div>
+        <div>Nội dung: <b>{remittance.code}</b></div>
+      </div>
+
+      <div className="od-alert">
+        Hãy chuyển <b>đúng số tiền</b> và ghi <b>đúng nội dung</b> là mã phiếu. Kế toán sẽ đối chiếu sao kê rồi xác nhận phiếu.
+        {BANK.testMode && ' (Chế độ test: tài khoản mẫu, không có tiền thật.)'}
+      </div>
+
+      <div className="form-actions">
+        <button type="button" className="btn" onClick={onClose}>Đóng</button>
+        {BANK.testMode && (
+          <button type="button" className="btn btn-primary" onClick={onDone}>Tôi đã chuyển khoản (giả lập)</button>
+        )}
+      </div>
+    </Modal>
+  );
+}
 
 // Shipper: xem COD đang giữ và nộp tiền cho kế toán (FR57)
 export default function ShipperCodPage() {
@@ -21,6 +67,7 @@ export default function ShipperCodPage() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
+  const [transfer, setTransfer] = useState(null); // phiếu đang hiện mã QR chuyển khoản
 
   const load = useCallback(async () => {
     setError('');
@@ -66,13 +113,20 @@ export default function ShipperCodPage() {
     setMessage('');
     try {
       const r = await codApi.createRemittance(chosen.map((o) => o.id));
-      setMessage(`Đã tạo phiếu nộp ${r.code} (${formatVnd(r.totalAmount)}). Hãy đưa đủ số tiền cho kế toán, kế toán sẽ đối chiếu và xác nhận.`);
+      setMessage(`Đã tạo phiếu nộp ${r.code} (${formatVnd(r.totalAmount)}). Hãy chuyển khoản đúng số tiền, nội dung là mã phiếu. Kế toán sẽ đối chiếu và xác nhận.`);
+      setTransfer(r);
       await load();
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
       setBusy(false);
     }
+  };
+
+  // Giả lập (chỉ giao diện, không ghi vào database): shipper báo đã chuyển khoản xong
+  const confirmTransferred = () => {
+    setMessage(`Đã ghi nhận bạn chuyển khoản phiếu ${transfer.code}. Phiếu đang chờ kế toán đối chiếu và xác nhận.`);
+    setTransfer(null);
   };
 
   const totalPages = Math.max(1, Math.ceil(history.total / 10));
@@ -152,7 +206,12 @@ export default function ShipperCodPage() {
                     {r.confirmNote && <div className="muted" style={{ fontSize: 12 }}>{r.confirmNote}</div>}
                   </td>
                   <td>{formatDateTime(r.createdAt)}</td>
-                  <td><RemittancePill status={r.status} /></td>
+                  <td>
+                    <RemittancePill status={r.status} />
+                    {r.status === 'pending' && (
+                      <button type="button" className="act-btn" style={{ marginLeft: 8 }} onClick={() => setTransfer(r)}>Mã QR</button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -169,6 +228,10 @@ export default function ShipperCodPage() {
           </div>
         </div>
       </div>
+
+      {transfer && (
+        <TransferModal remittance={transfer} onClose={() => setTransfer(null)} onDone={confirmTransferred} />
+      )}
     </>
   );
 }

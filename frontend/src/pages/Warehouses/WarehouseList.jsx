@@ -1,9 +1,10 @@
 // Đặt vào: D:\spreeexpress\frontend\src\pages\Warehouses\
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search } from 'lucide-react';
+import { ChevronDown, Search } from 'lucide-react';
 import PageHeader from '../../components/common/PageHeader';
 import StatCard from '../../components/common/StatCard';
+import RowMenu from '../../components/common/RowMenu';
 import { warehouseApi } from '../../api/warehouseApi';
 import { getErrorMessage } from '../../api/authApi';
 import { useAuth } from '../../context/AuthContext';
@@ -12,7 +13,42 @@ import WarehouseFormModal from './WarehouseFormModal';
 import '../Accounts/accounts.css';
 import './warehouses.css';
 
-const PAGE_SIZE = 10;
+// Lấy một lần tối đa 100 kho rồi nhóm theo kho vùng (không phân trang để một kho vùng không bị cắt đôi)
+const FETCH_SIZE = 100;
+const NO_PARENT = 'none';
+
+const byCode = (a, b) => a.code.localeCompare(b.code, 'vi');
+
+// Nhóm kho địa phương dưới kho vùng của nó. Kho vùng bị lọc mất (ví dụ khi tìm kiếm) vẫn hiện làm tiêu đề nhóm.
+function buildGroups(items) {
+  const groups = new Map();
+  items.filter((w) => w.type === 'regional').forEach((w) => groups.set(w.id, { key: w.id, head: w, children: [] }));
+
+  const orphans = [];
+  items.filter((w) => w.type !== 'regional').forEach((w) => {
+    if (!w.parentId) {
+      orphans.push(w);
+      return;
+    }
+    let g = groups.get(w.parentId);
+    if (!g) {
+      g = {
+        key: w.parentId,
+        head: { id: w.parentId, code: w.parentCode ?? '', name: w.parentName ?? '', type: 'regional', placeholder: true },
+        children: [],
+      };
+      groups.set(w.parentId, g);
+    }
+    g.children.push(w);
+  });
+
+  const list = [...groups.values()].sort((a, b) => byCode(a.head, b.head));
+  list.forEach((g) => g.children.sort(byCode));
+  if (orphans.length > 0) {
+    list.push({ key: NO_PARENT, head: null, children: orphans.sort(byCode) });
+  }
+  return list;
+}
 
 export default function WarehouseList() {
   const { role } = useAuth();
@@ -20,7 +56,6 @@ export default function WarehouseList() {
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
   const [summary, setSummary] = useState({ total: 0, active: 0, regional: 0, local: 0 });
-  const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [type, setType] = useState('');
@@ -28,12 +63,10 @@ export default function WarehouseList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [modal, setModal] = useState(null); // { type: 'create' | 'edit', warehouse? }
+  const [collapsed, setCollapsed] = useState(() => new Set());
 
   useEffect(() => {
-    const t = setTimeout(() => {
-      setDebouncedSearch(search.trim());
-      setPage(1);
-    }, 300);
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 300);
     return () => clearTimeout(t);
   }, [search]);
 
@@ -46,8 +79,8 @@ export default function WarehouseList() {
           search: debouncedSearch || undefined,
           type: type || undefined,
           isActive: status === '' ? undefined : status === 'active',
-          page,
-          pageSize: PAGE_SIZE,
+          page: 1,
+          pageSize: FETCH_SIZE,
         }),
         warehouseApi.summary(),
       ]);
@@ -59,13 +92,29 @@ export default function WarehouseList() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, type, status, page]);
+  }, [debouncedSearch, type, status]);
 
   useEffect(() => {
     load();
   }, [load]);
 
   const isAdmin = role === 'admin';
+  const groups = useMemo(() => buildGroups(items), [items]);
+
+  // Khi đang tìm kiếm thì luôn mở hết để thấy kết quả khớp
+  const forceOpen = debouncedSearch !== '';
+  const isOpen = (key) => forceOpen || !collapsed.has(key);
+
+  const toggleGroup = (key) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+  const expandAll = () => setCollapsed(new Set());
+  const collapseAll = () => setCollapsed(new Set(groups.filter((g) => g.head).map((g) => g.key)));
 
   const toggleStatus = async (w) => {
     const action = w.isActive ? 'ngừng hoạt động' : 'mở lại hoạt động';
@@ -84,7 +133,96 @@ export default function WarehouseList() {
     load();
   };
 
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  // Nút Xem + menu "⋯" (Sửa, Ngừng/Mở lại) của một kho
+  const renderActions = (w, withMenu) => (
+    <div className="row-actions">
+      <Link className="act-btn" to={`/${role}/warehouses/${w.id}`}>Xem</Link>
+      {isAdmin && withMenu && (
+        <RowMenu
+          items={[
+            { label: 'Sửa kho', onClick: () => setModal({ type: 'edit', warehouse: w }) },
+            {
+              label: w.isActive ? 'Ngừng hoạt động' : 'Mở lại hoạt động',
+              danger: w.isActive,
+              success: !w.isActive,
+              onClick: () => toggleStatus(w),
+            },
+          ]}
+        />
+      )}
+    </div>
+  );
+
+  const statusPill = (w) =>
+    w.placeholder
+      ? <span className="muted">—</span>
+      : <span className={`pill ${w.isActive ? 'pill-ok' : 'pill-off'}`}>{w.isActive ? 'Đang hoạt động' : 'Ngừng hoạt động'}</span>;
+
+  // Dựng danh sách dòng và đánh số thứ tự liên tục
+  let stt = 0;
+  const rows = [];
+  groups.forEach((g) => {
+    const open = isOpen(g.key);
+
+    if (g.head) {
+      const h = g.head;
+      stt += 1;
+      rows.push(
+        <tr key={`h-${g.key}`} className={`wh-reg ${h.isActive === false ? 'row-locked' : ''}`}>
+          <td className="col-stt">{stt}</td>
+          <td>
+            <button
+              type="button" className={`wh-tg ${open ? '' : 'closed'}`} aria-expanded={open}
+              aria-label={open ? 'Thu gọn' : 'Mở rộng'} onClick={() => toggleGroup(g.key)}
+            >
+              <ChevronDown size={16} />
+            </button>
+            <Link className="code-link" to={`/${role}/warehouses/${h.id}`}>{h.code}</Link>
+          </td>
+          <td>
+            {h.name}
+            <span className="wh-cnt">{g.children.length} kho địa phương</span>
+            {!h.placeholder && <div className="wh-sub">{h.staffCount} nhân viên</div>}
+          </td>
+          <td>{statusPill(h)}</td>
+          <td>{renderActions(h, !h.placeholder)}</td>
+        </tr>,
+      );
+    } else {
+      rows.push(
+        <tr key="h-none" className="wh-none">
+          <td className="col-stt" />
+          <td colSpan={4}>
+            <button
+              type="button" className={`wh-tg ${open ? '' : 'closed'}`} aria-expanded={open}
+              aria-label={open ? 'Thu gọn' : 'Mở rộng'} onClick={() => toggleGroup(g.key)}
+            >
+              <ChevronDown size={16} />
+            </button>
+            Chưa gắn kho vùng
+            <span className="wh-cnt">{g.children.length} kho</span>
+          </td>
+        </tr>,
+      );
+    }
+
+    if (!open) return;
+    g.children.forEach((w) => {
+      stt += 1;
+      rows.push(
+        <tr key={w.id} className={`wh-loc ${w.isActive ? '' : 'row-locked'}`}>
+          <td className="col-stt">{stt}</td>
+          <td><Link className="code-link" to={`/${role}/warehouses/${w.id}`}>{w.code}</Link></td>
+          <td className="wh-nm-loc">
+            <b>{w.name}</b>
+            <div className="wh-sub">{w.address} · {w.staffCount} NV · {w.shipperCount} shipper</div>
+          </td>
+          <td>{statusPill(w)}</td>
+          <td>{renderActions(w, true)}</td>
+        </tr>,
+      );
+    });
+  });
 
   return (
     <>
@@ -113,12 +251,12 @@ export default function WarehouseList() {
               <Search size={16} />
               <input placeholder="Tìm theo mã kho hoặc tên kho..." value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
-            <select className="acc-select" value={type} onChange={(e) => { setType(e.target.value); setPage(1); }}>
+            <select className="acc-select" value={type} onChange={(e) => setType(e.target.value)}>
               <option value="">Tất cả loại kho</option>
               <option value="regional">{TYPE_LABEL.regional}</option>
               <option value="local">{TYPE_LABEL.local}</option>
             </select>
-            <select className="acc-select" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
+            <select className="acc-select" value={status} onChange={(e) => setStatus(e.target.value)}>
               <option value="">Mọi trạng thái</option>
               <option value="active">Đang hoạt động</option>
               <option value="inactive">Ngừng hoạt động</option>
@@ -128,59 +266,31 @@ export default function WarehouseList() {
 
         {error && <div className="acc-banner">{error}</div>}
 
+        {groups.length > 0 && (
+          <div className="wh-tools">
+            <button type="button" className="act-btn" onClick={expandAll}>Mở rộng tất cả</button>
+            <button type="button" className="act-btn" onClick={collapseAll}>Thu gọn tất cả</button>
+          </div>
+        )}
+
         <div className="acc-scroll">
-          <table className="data-table">
+          <table className="data-table wh-tree">
             <thead>
               <tr>
-                <th>MÃ KHO</th><th>TÊN KHO</th><th>LOẠI</th><th>KHO VÙNG QUẢN LÝ</th>
-                <th>NHÂN VIÊN</th><th>SHIPPER</th><th>TRẠNG THÁI</th><th>THAO TÁC</th>
+                <th className="col-stt">STT</th><th>MÃ KHO</th><th>TÊN KHO</th><th>TRẠNG THÁI</th><th>THAO TÁC</th>
               </tr>
             </thead>
-            <tbody>
-              {items.map((w) => (
-                <tr key={w.id} className={w.isActive ? '' : 'row-locked'}>
-                  <td><Link className="code-link" to={`/${role}/warehouses/${w.id}`}>{w.code}</Link></td>
-                  <td>
-                    <b>{w.name}</b>
-                    <div className="muted" style={{ fontSize: 13, marginTop: 2 }}>{w.address}</div>
-                  </td>
-                  <td><span className={`pill ${w.type === 'regional' ? 'pill-regional' : 'pill-local'}`}>{TYPE_LABEL[w.type]}</span></td>
-                  <td>
-                    {w.parentCode
-                      ? w.parentCode
-                      : w.type === 'local'
-                        ? <span className="pill pill-wait" style={{ marginLeft: 0 }}>Chưa gắn kho vùng</span>
-                        : <span className="muted">—</span>}
-                  </td>
-                  <td>{w.staffCount}</td>
-                  <td>{w.type === 'local' ? w.shipperCount : <span className="muted">—</span>}</td>
-                  <td><span className={`pill ${w.isActive ? 'pill-ok' : 'pill-off'}`}>{w.isActive ? 'Đang hoạt động' : 'Ngừng hoạt động'}</span></td>
-                  <td>
-                    <div className="row-actions">
-                      <Link className="act-btn" to={`/${role}/warehouses/${w.id}`}>Xem</Link>
-                      {isAdmin && <button className="act-btn" onClick={() => setModal({ type: 'edit', warehouse: w })}>Sửa</button>}
-                      {isAdmin && (
-                        <button className={`act-btn ${w.isActive ? 'danger' : 'success'}`} onClick={() => toggleStatus(w)}>
-                          {w.isActive ? 'Ngừng' : 'Mở lại'}
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
+            <tbody>{rows}</tbody>
           </table>
           {!loading && items.length === 0 && <div className="acc-empty">Chưa có kho nào phù hợp. {isAdmin && 'Bấm "Thêm kho" để tạo kho đầu tiên.'}</div>}
           {loading && items.length === 0 && <div className="acc-empty">Đang tải...</div>}
         </div>
 
         <div className="acc-foot">
-          <span>Tổng <b>{total}</b> kho</span>
-          <div className="acc-pager">
-            <button disabled={page <= 1} onClick={() => setPage(page - 1)}>‹</button>
-            <span>Trang {page} / {totalPages}</span>
-            <button disabled={page >= totalPages} onClick={() => setPage(page + 1)}>›</button>
-          </div>
+          <span>
+            Tổng <b>{total}</b> kho
+            {total > items.length && ` (đang hiển thị ${items.length}, hãy dùng ô tìm kiếm để thu hẹp)`}
+          </span>
         </div>
       </div>
 

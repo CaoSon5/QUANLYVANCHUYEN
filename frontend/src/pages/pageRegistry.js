@@ -27,6 +27,7 @@ import SettlementsPage from './Finance/SettlementsPage';
 import PayoutPage from './Finance/PayoutPage';
 import MySettlementsPage from './Finance/MySettlementsPage';
 import ShippingRevenuePage from './Reports/ShippingRevenuePage';
+import FinanceReportPage from './Finance/FinanceReportPage';
 import OpsReportsPage from './Reports/OpsReportsPage';
 
 // Trang đã làm xong chức năng thật. Khóa dạng "<role>/<slug>".
@@ -64,5 +65,5 @@ export const PAGES = {
   'seller/settlements': MySettlementsPage,
   'admin/reports': ShippingRevenuePage,
   'admin/ops-reports': OpsReportsPage,
-  'accountant/reports': ShippingRevenuePage,
+  'accountant/reports': FinanceReportPage,
 };

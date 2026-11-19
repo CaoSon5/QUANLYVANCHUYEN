@@ -2,10 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { Search } from 'lucide-react';
 import PageHeader from '../../components/common/PageHeader';
 import StatCard from '../../components/common/StatCard';
+import RowMenu from '../../components/common/RowMenu';
 import { userApi } from '../../api/userApi';
 import { getErrorMessage } from '../../api/authApi';
 import { ROLES, ROLE_LIST } from '../../config/roles';
 import { useAuth } from '../../context/AuthContext';
+import { stt } from '../../utils/format';
 import UserFormModal from './UserFormModal';
 import ResetPasswordModal from './ResetPasswordModal';
 import './accounts.css';
@@ -132,16 +134,17 @@ export default function AccountsPage() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>NGƯỜI DÙNG</th><th>VAI TRÒ</th><th>TRẠNG THÁI</th><th>NGÀY TẠO</th><th>THAO TÁC</th>
+                <th className="col-stt">STT</th><th>NGƯỜI DÙNG</th><th>VAI TRÒ</th><th>TRẠNG THÁI</th><th>NGÀY TẠO</th><th>THAO TÁC</th>
               </tr>
             </thead>
             <tbody>
-              {items.map((u) => {
+              {items.map((u, i) => {
                 const r = ROLES[u.role];
                 const isAdminRow = u.role === 'admin';
                 const isMe = u.id === me?.id;
                 return (
                   <tr key={u.id} className={u.isActive ? '' : 'row-locked'}>
+                    <td className="col-stt">{stt(page, PAGE_SIZE, i)}</td>
                     <td>
                       <div className="user-cell">
                         <span className="u-avatar" style={{ background: r?.color ?? '#64748b' }}>{initials(u.fullName)}</span>
@@ -167,15 +170,19 @@ export default function AccountsPage() {
                     <td>
                       <div className="row-actions">
                         <button className="act-btn" onClick={() => setModal({ type: 'edit', user: u })}>Sửa</button>
-                        <button className="act-btn" onClick={() => setModal({ type: 'reset', user: u })}>Đặt lại MK</button>
-                        <button
-                          className={`act-btn ${u.isActive ? 'danger' : 'success'}`}
-                          disabled={isAdminRow || isMe}
-                          title={isAdminRow || isMe ? 'Không thể khóa tài khoản Admin' : ''}
-                          onClick={() => toggleStatus(u)}
-                        >
-                          {u.isActive ? 'Khóa' : 'Mở khóa'}
-                        </button>
+                        <RowMenu
+                          items={[
+                            { label: 'Đặt lại mật khẩu', onClick: () => setModal({ type: 'reset', user: u }) },
+                            {
+                              label: u.isActive ? 'Khóa tài khoản' : 'Mở khóa',
+                              danger: u.isActive,
+                              success: !u.isActive,
+                              disabled: isAdminRow || isMe,
+                              title: isAdminRow || isMe ? 'Không thể khóa tài khoản Admin' : '',
+                              onClick: () => toggleStatus(u),
+                            },
+                          ]}
+                        />
                       </div>
                     </td>
                   </tr>

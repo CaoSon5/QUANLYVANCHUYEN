@@ -43,6 +43,10 @@ button { cursor: pointer; }
   .grid-3, .grid-4 { grid-template-columns: 1fr; }
 }
 
+/* Cột số thứ tự (STT) dùng chung cho các bảng danh sách */
+table th.col-stt, table td.col-stt { width: 64px; text-align: center; padding-left: 12px; padding-right: 12px; }
+table td.col-stt { color: var(--muted); font-weight: 600; }
+
 .placeholder {
   display: flex; align-items: center; justify-content: center;
   min-height: 220px; border: 2px dashed var(--border); border-radius: 12px;

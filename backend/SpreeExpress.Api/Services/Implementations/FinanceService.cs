@@ -132,6 +132,10 @@ public class FinanceService : IFinanceService
             OrderCount = h.OrderCount,
             Amount = h.Amount,
             OldestDeliveredAt = h.OldestDeliveredAt,
+            WarehouseId = h.WarehouseId,
+            WarehouseCode = h.WarehouseCode,
+            WarehouseName = h.WarehouseName,
+            RegionCode = h.RegionCode,
         }).ToList();
     }
 
@@ -360,6 +364,83 @@ public class FinanceService : IFinanceService
             PreviousRevenue = previousRevenue,
             PreviousOrders = previous.Count,
             ChangePercent = previousRevenue == 0 ? null : Math.Round((totalRevenue - previousRevenue) / previousRevenue * 100, 1),
+        };
+    }
+
+    // ================= BÁO CÁO TÀI CHÍNH =================
+
+    // Dòng tiền COD trong kỳ (mỗi khoản tính theo ngày phát sinh của chính nó) và công nợ tại thời điểm hiện tại.
+    // granularity: day | month | year. Mặc định: 12 tháng gần nhất.
+    public async Task<FinanceReportDto> GetFinanceReportAsync(string? granularity, DateOnly? from, DateOnly? to)
+    {
+        var g = (granularity ?? "month").Trim().ToLowerInvariant();
+        if (g != "day" && g != "month" && g != "year")
+            throw new AppException("Chỉ hỗ trợ báo cáo theo ngày, tháng hoặc năm", 400);
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
+        var end = to ?? today;
+        var start = from ?? (g == "month" ? end.AddMonths(-11) : g == "year" ? end.AddYears(-4) : end.AddDays(-29));
+
+        var (rangeStart, rangeEnd, _) = NormalizeRange(g, start, end);
+        var data = await _finance.GetFinanceReportDataAsync(VnToUtc(rangeStart), VnToUtc(rangeEnd));
+        var counts = await _finance.GetCountsAsync();
+
+        DateOnly BucketStart(DateTime utc)
+        {
+            var vn = utc.AddHours(7);
+            return g == "month" ? new DateOnly(vn.Year, vn.Month, 1)
+                 : g == "year" ? new DateOnly(vn.Year, 1, 1)
+                 : DateOnly.FromDateTime(vn);
+        }
+
+        Dictionary<DateOnly, decimal> SumBy(List<MoneyRow> rows, Func<MoneyRow, decimal> pick) =>
+            rows.GroupBy(r => BucketStart(r.At)).ToDictionary(x => x.Key, x => x.Sum(pick));
+
+        var collected = SumBy(data.Delivered, r => r.Amount);
+        var fees = SumBy(data.Delivered, r => r.Extra);
+        var remitted = SumBy(data.Remitted, r => r.Amount);
+        var differences = SumBy(data.Remitted, r => r.Extra);
+        var settled = SumBy(data.Settled, r => r.Amount);
+        var paidOut = SumBy(data.PaidOut, r => r.Amount);
+
+        static decimal Get(Dictionary<DateOnly, decimal> map, DateOnly key) => map.TryGetValue(key, out var v) ? v : 0;
+
+        // Điền đủ mọi kỳ, kỳ nào chưa có số liệu thì bằng 0
+        var buckets = new List<FinanceBucketDto>();
+        for (var d = rangeStart; d < rangeEnd; d = Shift(g, d, 1))
+        {
+            buckets.Add(new FinanceBucketDto
+            {
+                Key = d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                Label = g == "year" ? d.ToString("yyyy", CultureInfo.InvariantCulture)
+                      : g == "month" ? d.ToString("MM/yyyy", CultureInfo.InvariantCulture)
+                      : d.ToString("dd/MM", CultureInfo.InvariantCulture),
+                CodCollected = Get(collected, d),
+                CodRemitted = Get(remitted, d),
+                CodSettled = Get(settled, d),
+                PaidOut = Get(paidOut, d),
+                ShippingFee = Get(fees, d),
+                Difference = Get(differences, d),
+            });
+        }
+
+        return new FinanceReportDto
+        {
+            Granularity = g,
+            From = rangeStart,
+            To = rangeEnd.AddDays(-1),
+            Buckets = buckets,
+            CodCollected = buckets.Sum(b => b.CodCollected),
+            CodRemitted = buckets.Sum(b => b.CodRemitted),
+            CodSettled = buckets.Sum(b => b.CodSettled),
+            PaidOut = buckets.Sum(b => b.PaidOut),
+            ShippingFee = buckets.Sum(b => b.ShippingFee),
+            Difference = buckets.Sum(b => b.Difference),
+            ShipperHolding = counts.CodHeld,
+            RemittancesPendingAmount = data.RemittancesPendingAmount,
+            ReceivedNotSettled = data.ReceivedNotSettled,
+            PayoutPending = counts.PendingPayoutAmount,
+            DifferenceTotal = data.DifferenceTotal,
         };
     }
 

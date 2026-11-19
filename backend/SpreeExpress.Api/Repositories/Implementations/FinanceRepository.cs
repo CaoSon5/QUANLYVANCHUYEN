@@ -67,11 +67,19 @@ public class FinanceRepository : IFinanceRepository
         var ids = groups.Where(g => g.ShipperId.HasValue).Select(g => g.ShipperId!.Value).ToList();
         var users = await _db.Users.AsNoTracking().Where(u => ids.Contains(u.Id)).ToListAsync();
 
+        // Kho của từng shipper, kèm kho vùng quản lý
+        var warehouseIds = users.Where(u => u.WarehouseId.HasValue).Select(u => u.WarehouseId!.Value).Distinct().ToList();
+        var warehouses = await _db.Warehouses.AsNoTracking()
+            .Include(w => w.Parent)
+            .Where(w => warehouseIds.Contains(w.Id))
+            .ToListAsync();
+
         return groups
             .Where(g => g.ShipperId.HasValue)
             .Select(g =>
             {
                 var user = users.FirstOrDefault(u => u.Id == g.ShipperId!.Value);
+                var warehouse = user?.WarehouseId is { } wid ? warehouses.FirstOrDefault(w => w.Id == wid) : null;
                 return new ShipperHolding
                 {
                     ShipperId = g.ShipperId!.Value,
@@ -80,6 +88,10 @@ public class FinanceRepository : IFinanceRepository
                     OrderCount = g.Count,
                     Amount = g.Amount,
                     OldestDeliveredAt = g.Oldest,
+                    WarehouseId = warehouse?.Id,
+                    WarehouseCode = warehouse?.Code,
+                    WarehouseName = warehouse?.Name,
+                    RegionCode = warehouse?.Parent?.Code,
                 };
             })
             .OrderByDescending(h => h.Amount)
@@ -221,6 +233,59 @@ public class FinanceRepository : IFinanceRepository
             PendingPayoutAmount = await _db.Settlements
                 .Where(s => s.Status == SettlementStatus.Pending && s.NetAmount > 0)
                 .SumAsync(s => s.NetAmount),
+        };
+    }
+
+    public async Task<FinanceReportData> GetFinanceReportDataAsync(DateTime fromUtc, DateTime toUtc)
+    {
+        var delivered = await _db.Orders.AsNoTracking()
+            .Where(o => o.Status == OrderStatus.Delivered && o.DeliveredAt >= fromUtc && o.DeliveredAt < toUtc)
+            .Select(o => new { o.DeliveredAt, o.CodCollected, o.ShippingFee })
+            .ToListAsync();
+
+        var remitted = await _db.CodRemittances.AsNoTracking()
+            .Where(r => r.Status == RemittanceStatus.Confirmed && r.ConfirmedAt >= fromUtc && r.ConfirmedAt < toUtc)
+            .Select(r => new { r.ConfirmedAt, r.ReceivedAmount, r.TotalAmount })
+            .ToListAsync();
+
+        var settled = await _db.Settlements.AsNoTracking()
+            .Where(s => s.CreatedAt >= fromUtc && s.CreatedAt < toUtc)
+            .Select(s => new { s.CreatedAt, s.GrossCod })
+            .ToListAsync();
+
+        var paid = await _db.Settlements.AsNoTracking()
+            .Where(s => s.Status == SettlementStatus.Paid && s.PaidAt >= fromUtc && s.PaidAt < toUtc)
+            .Select(s => new { s.PaidAt, s.NetAmount })
+            .ToListAsync();
+
+        return new FinanceReportData
+        {
+            Delivered = delivered.Where(r => r.DeliveredAt.HasValue)
+                .Select(r => new MoneyRow { At = r.DeliveredAt!.Value, Amount = r.CodCollected ?? 0, Extra = r.ShippingFee }).ToList(),
+            Remitted = remitted.Where(r => r.ConfirmedAt.HasValue)
+                .Select(r => new MoneyRow
+                {
+                    At = r.ConfirmedAt!.Value,
+                    Amount = r.ReceivedAmount ?? 0,
+                    Extra = (r.ReceivedAmount ?? 0) - r.TotalAmount,
+                }).ToList(),
+            Settled = settled.Select(s => new MoneyRow { At = s.CreatedAt, Amount = s.GrossCod }).ToList(),
+            PaidOut = paid.Where(s => s.PaidAt.HasValue)
+                .Select(s => new MoneyRow { At = s.PaidAt!.Value, Amount = s.NetAmount }).ToList(),
+
+            RemittancesPendingAmount = await _db.CodRemittances
+                .Where(r => r.Status == RemittanceStatus.Pending)
+                .SumAsync(r => r.TotalAmount),
+            ReceivedNotSettled = await _db.Orders
+                .Where(o => o.Status == OrderStatus.Delivered
+                            && o.SettlementId == null
+                            && (o.CodCollected ?? 0) > 0
+                            && o.CodRemittance != null
+                            && o.CodRemittance.Status == RemittanceStatus.Confirmed)
+                .SumAsync(o => o.CodCollected ?? 0),
+            DifferenceTotal = await _db.CodRemittances
+                .Where(r => r.Status == RemittanceStatus.Confirmed)
+                .SumAsync(r => (r.ReceivedAmount ?? 0) - r.TotalAmount),
         };
     }
 

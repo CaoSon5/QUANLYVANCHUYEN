@@ -15,6 +15,7 @@ export const codApi = {
 export const financeApi = {
   summary: () => get('/api/finance/summary'),
   holdings: () => get('/api/finance/holdings'),
+  report: (params) => get('/api/finance/report', params),
   remittances: (params) => get('/api/finance/remittances', params),
   remittance: (id) => get(`/api/finance/remittances/${id}`),
   confirmRemittance: (id, body) => post(`/api/finance/remittances/${id}/confirm`, body),
