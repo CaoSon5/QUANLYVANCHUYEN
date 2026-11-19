@@ -8,6 +8,10 @@ import './orders.css';
 const PHONE_REGEX = /^(0|\+84)\d{9}$/;
 const cleanPhone = (v) => v.replace(/\s/g, '');
 
+// "Kho trung tâm TPHCM" -> "TPHCM": người bán chỉ cần thấy tên tỉnh/thành, không cần chữ "Kho trung tâm"
+const OTHER_REGION = 'other';
+const regionLabel = (name = '') => name.replace(/^Kho\s+(trung tâm|vùng)\s+/i, '').trim() || name;
+
 // Form tạo / sửa yêu cầu lấy hàng (dùng chung). mode: 'create' | 'edit'
 export default function OrderForm({ mode, order, onSaved, onCancel }) {
   const { user } = useAuth();
@@ -30,8 +34,10 @@ export default function OrderForm({ mode, order, onSaved, onCancel }) {
     pickupWarehouseId: order?.pickupWarehouseId ?? '',
   });
   const [warehouses, setWarehouses] = useState([]);
-  const [destinations, setDestinations] = useState([]); // quận/huyện (kho địa phương) kèm tỉnh/thành (kho vùng)
+  const [destinations, setDestinations] = useState([]); // khu vực giao hàng (kho địa phương) kèm tỉnh/thành (kho vùng)
   const [regionId, setRegionId] = useState('');
+  const [pickupRegionId, setPickupRegionId] = useState(''); // vùng của kho lấy hàng
+  const [destinationsLoaded, setDestinationsLoaded] = useState(false);
   const [fee, setFee] = useState(order?.shippingFee ?? null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -40,10 +46,10 @@ export default function OrderForm({ mode, order, onSaved, onCancel }) {
 
   useEffect(() => {
     orderApi.pickupWarehouses().then(setWarehouses).catch(() => {});
-    orderApi.destinations().then(setDestinations).catch(() => {});
+    orderApi.destinations().then(setDestinations).catch(() => {}).finally(() => setDestinationsLoaded(true));
   }, []);
 
-  // Danh sách tỉnh/thành (không trùng) và quận/huyện thuộc tỉnh đang chọn
+  // Danh sách tỉnh/thành (không trùng) và khu vực giao hàng thuộc tỉnh đang chọn
   const regions = useMemo(() => {
     const map = new Map();
     destinations.forEach((d) => { if (!map.has(d.regionId)) map.set(d.regionId, d.regionName); });
@@ -51,7 +57,7 @@ export default function OrderForm({ mode, order, onSaved, onCancel }) {
   }, [destinations]);
   const districts = destinations.filter((d) => d.regionId === regionId);
 
-  // Khi sửa đơn: tự chọn lại tỉnh/thành của quận/huyện đã lưu
+  // Khi sửa đơn: tự chọn lại tỉnh/thành của khu vực giao hàng đã lưu
   useEffect(() => {
     if (regionId || !form.destinationWarehouseId) return;
     const d = destinations.find((x) => x.id === form.destinationWarehouseId);
@@ -77,6 +83,29 @@ export default function OrderForm({ mode, order, onSaved, onCancel }) {
     options.push({ id: order.pickupWarehouseId, code: order.pickupWarehouseCode, name: order.pickupWarehouseName });
   }
 
+  // Chọn kho lấy hàng theo 2 bước: vùng (tỉnh/thành) rồi kho thuộc vùng đó.
+  // Vùng của mỗi kho lấy từ danh sách khu vực giao hàng (cùng là kho địa phương gắn với kho vùng).
+  const regionByWarehouse = new Map(destinations.map((d) => [d.id, { id: d.regionId, name: d.regionName }]));
+  const regionOfWarehouse = (w) => regionByWarehouse.get(w.id)?.id ?? OTHER_REGION;
+  const pickupRegions = [];
+  options.forEach((w) => {
+    const id = regionOfWarehouse(w);
+    if (!pickupRegions.some((r) => r.id === id)) {
+      pickupRegions.push({ id, name: regionByWarehouse.get(w.id)?.name ?? 'Khác' });
+    }
+  });
+  pickupRegions.sort((a, b) => regionLabel(a.name).localeCompare(regionLabel(b.name), 'vi'));
+  const pickupOptions = options.filter((w) => regionOfWarehouse(w) === pickupRegionId);
+
+  // Tự chọn vùng: khi sửa đơn (theo kho đã lưu) hoặc khi chỉ có một vùng duy nhất
+  useEffect(() => {
+    if (!destinationsLoaded || pickupRegionId || options.length === 0) return;
+    const current = options.find((w) => w.id === form.pickupWarehouseId);
+    if (current) setPickupRegionId(regionOfWarehouse(current));
+    else if (pickupRegions.length === 1) setPickupRegionId(pickupRegions[0].id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [destinationsLoaded, options.length, pickupRegionId, form.pickupWarehouseId]);
+
   const validate = () => {
     const required = [
       ['senderName', 'Vui lòng nhập tên người gửi'],
@@ -97,7 +126,8 @@ export default function OrderForm({ mode, order, onSaved, onCancel }) {
     if (!(Number(form.declaredValue) >= 0)) return 'Giá trị hàng không hợp lệ';
     if (!(Number(form.codAmount) >= 0)) return 'Tiền thu hộ (COD) không hợp lệ';
     if (!regionId) return 'Vui lòng chọn tỉnh/thành người nhận';
-    if (!form.destinationWarehouseId) return 'Vui lòng chọn quận/huyện người nhận';
+    if (!form.destinationWarehouseId) return 'Vui lòng chọn khu vực giao hàng của người nhận';
+    if (!pickupRegionId) return 'Vui lòng chọn vùng lấy hàng';
     if (!form.pickupWarehouseId) return 'Vui lòng chọn kho lấy hàng';
     return '';
   };
@@ -149,14 +179,25 @@ export default function OrderForm({ mode, order, onSaved, onCancel }) {
           </div>
           <div className="full">
             <label className="form-label">Địa chỉ lấy hàng</label>
-            <input className="form-input" value={form.senderAddress} onChange={set('senderAddress')} placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành" />
+            <input className="form-input" value={form.senderAddress} onChange={set('senderAddress')} placeholder="Số nhà, đường, phường/xã, tỉnh/thành" />
           </div>
-          <div className="full">
-            <label className="form-label">Kho lấy hàng (kho phụ trách khu vực của bạn)</label>
-            <select className="form-input" value={form.pickupWarehouseId} onChange={set('pickupWarehouseId')}>
-              <option value="">— Chọn kho —</option>
-              {options.map((w) => <option key={w.id} value={w.id}>{w.code} - {w.name}</option>)}
+          <div>
+            <label className="form-label">Vùng lấy hàng</label>
+            <select
+              className="form-input" value={pickupRegionId}
+              onChange={(e) => { setPickupRegionId(e.target.value); setForm({ ...form, pickupWarehouseId: '' }); }}
+            >
+              <option value="">— Chọn vùng —</option>
+              {pickupRegions.map((r) => <option key={r.id} value={r.id}>{regionLabel(r.name)}</option>)}
             </select>
+          </div>
+          <div>
+            <label className="form-label">Kho lấy hàng (kho phụ trách khu vực của bạn)</label>
+            <select className="form-input" value={form.pickupWarehouseId} onChange={set('pickupWarehouseId')} disabled={!pickupRegionId}>
+              <option value="">— Chọn kho —</option>
+              {pickupOptions.map((w) => <option key={w.id} value={w.id}>{w.code} - {w.name}</option>)}
+            </select>
+            <div className="form-hint">Chọn vùng trước, rồi chọn kho gần địa chỉ lấy hàng của bạn nhất.</div>
             {options.length === 0 && <div className="form-hint">Hệ thống chưa có kho địa phương nào. Vui lòng liên hệ quản lý.</div>}
           </div>
         </div>
@@ -184,18 +225,19 @@ export default function OrderForm({ mode, order, onSaved, onCancel }) {
               onChange={(e) => { setRegionId(e.target.value); setForm({ ...form, destinationWarehouseId: '' }); }}
             >
               <option value="">— Chọn tỉnh/thành —</option>
-              {regions.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+              {regions.map((r) => <option key={r.id} value={r.id}>{regionLabel(r.name)}</option>)}
             </select>
           </div>
           <div>
-            <label className="form-label">Quận / Huyện</label>
+            <label className="form-label">Khu vực giao hàng</label>
             <select
               className="form-input" value={form.destinationWarehouseId} onChange={set('destinationWarehouseId')}
               disabled={!regionId}
             >
-              <option value="">— Chọn quận/huyện —</option>
+              <option value="">— Chọn khu vực —</option>
               {districts.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
             </select>
+            <div className="form-hint">Chọn khu vực gần địa chỉ người nhận nhất. Phường/xã và tên đường ghi ở ô địa chỉ giao hàng.</div>
             {destinations.length === 0 && <div className="form-hint">Hệ thống chưa có khu vực nhận hàng nào. Vui lòng liên hệ quản lý.</div>}
           </div>
         </div>
