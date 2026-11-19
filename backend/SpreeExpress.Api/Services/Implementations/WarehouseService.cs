@@ -59,6 +59,44 @@ public class WarehouseService : IWarehouseService
         }).ToList();
     }
 
+    // Bưu cục của nhân viên kho: chỉ thấy kho mình được gán, không bao giờ thấy kho khác
+    public async Task<MyWarehouseDto> GetMineAsync(Guid userId)
+    {
+        var user = await _users.GetByIdAsync(userId)
+                   ?? throw new AppException("Tài khoản không tồn tại", 401);
+        if (user.Role != UserRole.Warehouse || user.WarehouseId is null)
+            throw new AppException("Chỉ nhân viên kho đã được gán kho mới xem được bưu cục của mình", 403);
+
+        var warehouseId = user.WarehouseId.Value;
+        var detail = await GetDetailAsync(warehouseId);
+
+        var now = DateTime.UtcNow;
+        var startOfTodayUtc = now.AddHours(7).Date.AddHours(-7);
+        var stock = await _orders.GetWarehouseCountsAsync(warehouseId, startOfTodayUtc, now.AddHours(-48));
+        var activity = await _warehouses.GetActivityCountsAsync(warehouseId);
+        var loads = await _warehouses.GetShipperLoadsAsync(detail.Shippers.Select(s => s.Id));
+
+        return new MyWarehouseDto
+        {
+            Detail = detail,
+            ReceivedToday = stock.ReceivedToday,
+            DispatchedToday = stock.DispatchedToday,
+            ReturnsPending = stock.ReturnsPending,
+            BundlesOpen = activity.BundlesOpen,
+            BundlesSealed = activity.BundlesSealed,
+            BundlesReceived = activity.BundlesReceived,
+            TripsAtWarehouse = activity.TripsAtWarehouse,
+            TripsIncoming = activity.TripsIncoming,
+            ShipperLoads = loads.Select(l => new ShipperLoadDto
+            {
+                ShipperId = l.ShipperId,
+                PickupsPending = l.PickupsPending,
+                DeliveriesPending = l.DeliveriesPending,
+                OutForDelivery = l.OutForDelivery,
+            }).ToList(),
+        };
+    }
+
     public async Task<WarehouseDetailDto> GetDetailAsync(Guid id)
     {
         var warehouse = await _warehouses.GetDetailAsync(id)

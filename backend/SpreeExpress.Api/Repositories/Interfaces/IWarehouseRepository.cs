@@ -1,4 +1,4 @@
-// Đặt vào: D:\spreeexpress\backend\SpreeExpress.Api\Repositories\Interfaces\
+// Đặt vào: D:\spreeexpress_supabase\spreeexpress\backend\SpreeExpress.Api\Repositories\Interfaces\
 using SpreeExpress.Api.Entities;
 
 namespace SpreeExpress.Api.Repositories.Interfaces;
@@ -38,4 +38,27 @@ public interface IWarehouseRepository
 
     Task AddAsync(Warehouse warehouse);
     Task UpdateAsync(Warehouse warehouse);
+
+    // Tình hình hoạt động của một kho: bao và xe (dùng cho trang Bưu cục của nhân viên kho)
+    Task<WarehouseActivityCounts> GetActivityCountsAsync(Guid warehouseId);
+
+    // Khối lượng việc đang có của từng shipper
+    Task<List<ShipperLoadRow>> GetShipperLoadsAsync(IEnumerable<Guid> shipperIds);
+}
+
+public class WarehouseActivityCounts
+{
+    public int BundlesOpen { get; set; }        // bao đang gộp
+    public int BundlesSealed { get; set; }      // bao đã đóng, chờ lên xe
+    public int BundlesReceived { get; set; }    // bao đã đến kho, chờ mở
+    public int TripsAtWarehouse { get; set; }   // xe đang đỗ ở kho
+    public int TripsIncoming { get; set; }      // xe đang đến kho
+}
+
+public class ShipperLoadRow
+{
+    public Guid ShipperId { get; set; }
+    public int PickupsPending { get; set; }     // đã nhận đi lấy hàng, chưa lấy
+    public int DeliveriesPending { get; set; }  // đã nhận giao, chờ kho xuất hàng
+    public int OutForDelivery { get; set; }     // đang đi giao
 }

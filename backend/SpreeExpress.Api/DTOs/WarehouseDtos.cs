@@ -112,3 +112,31 @@ public class AssignMemberRequest
     [Required(ErrorMessage = "Vui lòng chọn tài khoản")]
     public Guid? UserId { get; set; }
 }
+
+// ===== Bưu cục của nhân viên kho =====
+
+public class ShipperLoadDto
+{
+    public Guid ShipperId { get; set; }
+    public int PickupsPending { get; set; }      // đã nhận đi lấy hàng, chưa lấy
+    public int DeliveriesPending { get; set; }   // đã nhận giao, chờ kho xuất hàng
+    public int OutForDelivery { get; set; }      // đang đi giao
+}
+
+// Tổng quan kho của chính nhân viên kho: thông tin, nhân sự, tình hình trong ngày, việc cần xử lý
+public class MyWarehouseDto
+{
+    public WarehouseDetailDto Detail { get; set; } = new();
+
+    public int ReceivedToday { get; set; }
+    public int DispatchedToday { get; set; }
+
+    public int BundlesOpen { get; set; }
+    public int BundlesSealed { get; set; }
+    public int BundlesReceived { get; set; }
+    public int TripsAtWarehouse { get; set; }
+    public int TripsIncoming { get; set; }
+    public int ReturnsPending { get; set; }
+
+    public List<ShipperLoadDto> ShipperLoads { get; set; } = new();
+}

@@ -1,4 +1,4 @@
-// Đặt vào: D:\spreeexpress\backend\SpreeExpress.Api\Repositories\Implementations\
+// Đặt vào: D:\spreeexpress_supabase\spreeexpress\backend\SpreeExpress.Api\Repositories\Implementations\
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using SpreeExpress.Api.Data;
@@ -109,5 +109,36 @@ public class WarehouseRepository : IWarehouseRepository
     public async Task UpdateAsync(Warehouse warehouse)
     {
         await _db.SaveChangesAsync();
+    }
+
+    public async Task<WarehouseActivityCounts> GetActivityCountsAsync(Guid warehouseId) => new()
+    {
+        BundlesOpen = await _db.Bundles.CountAsync(b => b.CurrentWarehouseId == warehouseId && b.Status == BundleStatus.Open),
+        BundlesSealed = await _db.Bundles.CountAsync(b => b.CurrentWarehouseId == warehouseId && b.Status == BundleStatus.Sealed),
+        BundlesReceived = await _db.Bundles.CountAsync(b => b.CurrentWarehouseId == warehouseId && b.Status == BundleStatus.Received),
+        TripsAtWarehouse = await _db.Trips.CountAsync(t => t.Status == TripStatus.AtWarehouse && t.CurrentWarehouseId == warehouseId),
+        TripsIncoming = await _db.Trips.CountAsync(t =>
+            (t.Status == TripStatus.Assigned || t.Status == TripStatus.InTransit) && t.NextWarehouseId == warehouseId),
+    };
+
+    public async Task<List<ShipperLoadRow>> GetShipperLoadsAsync(IEnumerable<Guid> shipperIds)
+    {
+        var ids = shipperIds.Distinct().ToList();
+        if (ids.Count == 0) return new List<ShipperLoadRow>();
+
+        var rows = await _db.Orders.AsNoTracking()
+            .Where(o => (o.Status == OrderStatus.PickupAccepted && o.PickupShipperId != null && ids.Contains(o.PickupShipperId.Value))
+                        || ((o.Status == OrderStatus.DeliveryAccepted || o.Status == OrderStatus.OutForDelivery)
+                            && o.DeliveryShipperId != null && ids.Contains(o.DeliveryShipperId.Value)))
+            .Select(o => new { o.Status, o.PickupShipperId, o.DeliveryShipperId })
+            .ToListAsync();
+
+        return ids.Select(id => new ShipperLoadRow
+        {
+            ShipperId = id,
+            PickupsPending = rows.Count(r => r.Status == OrderStatus.PickupAccepted && r.PickupShipperId == id),
+            DeliveriesPending = rows.Count(r => r.Status == OrderStatus.DeliveryAccepted && r.DeliveryShipperId == id),
+            OutForDelivery = rows.Count(r => r.Status == OrderStatus.OutForDelivery && r.DeliveryShipperId == id),
+        }).ToList();
     }
 }

@@ -1,9 +1,13 @@
+// Đặt vào: D:\spreeexpress_supabase\spreeexpress\backend\SpreeExpress.Api\Services\Interfaces\
 using SpreeExpress.Api.DTOs;
 
 namespace SpreeExpress.Api.Services.Interfaces;
 
 public interface IWarehouseService
 {
+    // Nhân viên kho xem tổng quan kho của chính mình
+    Task<MyWarehouseDto> GetMineAsync(Guid userId);
+
     Task<PagedResult<WarehouseDto>> ListAsync(string? search, string? type, bool? isActive, int page, int pageSize);
     Task<WarehouseSummaryDto> GetSummaryAsync();
     Task<List<WarehouseOptionDto>> GetOptionsAsync();

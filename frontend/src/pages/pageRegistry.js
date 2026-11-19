@@ -13,6 +13,7 @@ import OutboundPage from './Warehouses/OutboundPage';
 import ReturnsPage from './Warehouses/ReturnsPage';
 import BundlesPage from './Warehouses/BundlesPage';
 import WarehouseTripsPage from './Trips/WarehouseTripsPage';
+import PostOfficePage from './Warehouses/PostOfficePage';
 import DispatchPage from './Trips/DispatchPage';
 import TripTrackingPage from './Trips/TripTrackingPage';
 import DelayAlertsPage from './Trips/DelayAlertsPage';
@@ -21,6 +22,7 @@ import DriverBundlesPage from './Trips/DriverBundlesPage';
 import DriverHistoryPage from './Trips/DriverHistoryPage';
 import PendingDeliveryPage from './Deliveries/PendingDeliveryPage';
 import DeliveringPage from './Deliveries/DeliveringPage';
+import DeliveryHistoryPage from './Deliveries/DeliveryHistoryPage';
 import ShipperCodPage from './Cod/ShipperCodPage';
 import RemittancesPage from './Finance/RemittancesPage';
 import SettlementsPage from './Finance/SettlementsPage';
@@ -48,6 +50,7 @@ export const PAGES = {
   'warehouse/returns': ReturnsPage,
   'warehouse/bundles': BundlesPage,
   'warehouse/trips': WarehouseTripsPage,
+  'warehouse/post-office': PostOfficePage,
   'dispatcher/dispatch': DispatchPage,
   'dispatcher/tracking': TripTrackingPage,
   'dispatcher/delay-alerts': DelayAlertsPage,
@@ -57,6 +60,7 @@ export const PAGES = {
   'driver/history': DriverHistoryPage,
   'shipper/pending-delivery': PendingDeliveryPage,
   'shipper/delivering': DeliveringPage,
+  'shipper/history': DeliveryHistoryPage,
   'shipper/cod': ShipperCodPage,
   'accountant/shipper-cod': RemittancesPage,
   'accountant/seller-settlement': SettlementsPage,

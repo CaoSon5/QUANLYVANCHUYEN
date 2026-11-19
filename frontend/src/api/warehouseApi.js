@@ -1,3 +1,4 @@
+// Đặt vào: D:\spreeexpress_supabase\spreeexpress\frontend\src\api\
 import axiosClient from './axiosClient';
 
 export const warehouseApi = {
@@ -11,6 +12,8 @@ export const warehouseApi = {
     axiosClient.patch(`/api/warehouses/${id}/status`, { isActive }).then((r) => r.data),
   assignMember: (id, userId) =>
     axiosClient.post(`/api/warehouses/${id}/members`, { userId }).then((r) => r.data),
+  // Nhân viên kho xem tổng quan kho của mình (chỉ đọc)
+  mine: () => axiosClient.get('/api/my-warehouse').then((r) => r.data),
   removeMember: (id, userId) =>
     axiosClient.delete(`/api/warehouses/${id}/members/${userId}`).then((r) => r.data),
 };
