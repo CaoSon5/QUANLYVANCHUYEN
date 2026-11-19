@@ -57,7 +57,7 @@ export default function CodReport({ range }) {
             <div className="card-title">Shipper đang giữ tiền COD</div>
             <div className="card-sub">Tiền đã thu từ khách nhưng chưa nộp về công ty</div>
           </div>
-          <button className="btn" disabled={!data} onClick={exportCsv}>Xuất file CSV</button>
+          <button className="btn" disabled={!data} onClick={exportCsv}>Xuất file Excel</button>
         </div>
 
         <div className="acc-scroll">

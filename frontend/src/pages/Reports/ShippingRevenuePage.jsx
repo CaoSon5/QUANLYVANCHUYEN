@@ -132,7 +132,7 @@ export default function ShippingRevenuePage() {
             )}
           </div>
 
-          <button className="btn" style={{ marginLeft: 'auto' }} disabled={!data} onClick={exportCsv}>Xuất file CSV</button>
+          <button className="btn" style={{ marginLeft: 'auto' }} disabled={!data} onClick={exportCsv}>Xuất file Excel</button>
         </div>
         {error && <div className="acc-banner">{error}</div>}
       </div>

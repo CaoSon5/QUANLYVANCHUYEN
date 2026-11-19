@@ -44,7 +44,7 @@ export default function ShipperReport({ range }) {
               {data ? `Từ ${formatDateOnly(data.from)} đến ${formatDateOnly(data.to)}, xếp theo số đơn giao thành công` : 'Đang tải...'}
             </div>
           </div>
-          <button className="btn" disabled={!data} onClick={exportCsv}>Xuất file CSV</button>
+          <button className="btn" disabled={!data} onClick={exportCsv}>Xuất file Excel</button>
         </div>
 
         <div className="acc-scroll">

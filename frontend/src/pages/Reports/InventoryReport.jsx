@@ -38,7 +38,7 @@ export default function InventoryReport() {
           </div>
           <div className="acc-tools">
             <button className="btn" onClick={reload} disabled={loading}>{loading ? 'Đang tải...' : 'Làm mới'}</button>
-            <button className="btn" disabled={!data} onClick={exportCsv}>Xuất file CSV</button>
+            <button className="btn" disabled={!data} onClick={exportCsv}>Xuất file Excel</button>
           </div>
         </div>
 

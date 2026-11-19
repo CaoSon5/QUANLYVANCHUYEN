@@ -41,7 +41,7 @@ export default function DriverReport({ range }) {
               {data ? `Chuyến hoàn thành từ ${formatDateOnly(data.from)} đến ${formatDateOnly(data.to)}, xếp theo số chuyến` : 'Đang tải...'}
             </div>
           </div>
-          <button className="btn" disabled={!data} onClick={exportCsv}>Xuất file CSV</button>
+          <button className="btn" disabled={!data} onClick={exportCsv}>Xuất file Excel</button>
         </div>
 
         <div className="acc-scroll">

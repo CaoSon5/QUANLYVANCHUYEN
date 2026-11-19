@@ -55,7 +55,7 @@ export default function OrderStatusReport({ range }) {
               {data ? `Các đơn được tạo từ ${formatDateOnly(data.from)} đến ${formatDateOnly(data.to)}, theo trạng thái hiện tại` : 'Đang tải...'}
             </div>
           </div>
-          <button className="btn" disabled={!data} onClick={exportCsv}>Xuất file CSV</button>
+          <button className="btn" disabled={!data} onClick={exportCsv}>Xuất file Excel</button>
         </div>
 
         <div className="acc-scroll">
